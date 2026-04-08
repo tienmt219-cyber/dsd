@@ -1,0 +1,16 @@
+{
+  "name": "Shop MAM - Dream Team v5.0",
+  "short_name": "Shop MAM",
+  "description": "E-commerce management for Shop MAM",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#7C3AED",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
