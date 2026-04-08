@@ -12,6 +12,10 @@ const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const Orders = lazy(() => import('@/pages/Orders'))
 const AddOrder = lazy(() => import('@/pages/AddOrder'))
 const Ship = lazy(() => import('@/pages/Ship'))
+const GZ = lazy(() => import('@/pages/GZ'))
+const EMS = lazy(() => import('@/pages/EMS'))
+const Stock = lazy(() => import('@/pages/Stock'))
+const Products = lazy(() => import('@/pages/Products'))
 const Placeholder = lazy(() => import('@/pages/Placeholder'))
 
 // Simple password gate
@@ -78,11 +82,11 @@ function AppContent() {
             <Route path="/add-order" element={<AddOrder />} />
             <Route path="/ai-order" element={<Placeholder page="ai-order" />} />
             <Route path="/ai-chat" element={<Placeholder page="ai-chat" />} />
-            <Route path="/gz" element={<Placeholder page="gz" />} />
-            <Route path="/ems" element={<Placeholder page="ems" />} />
+            <Route path="/gz" element={<GZ />} />
+            <Route path="/ems" element={<EMS />} />
             <Route path="/ship" element={<Ship />} />
-            <Route path="/stock" element={<Placeholder page="stock" />} />
-            <Route path="/products" element={<Placeholder page="products" />} />
+            <Route path="/stock" element={<Stock />} />
+            <Route path="/products" element={<Products />} />
             <Route path="/tools" element={<Placeholder page="tools" />} />
             <Route path="/ck" element={<Placeholder page="ck" />} />
           </Routes>
