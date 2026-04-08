@@ -11,6 +11,7 @@ import { useAPI } from '@/hooks/useAPI'
 const Dashboard = lazy(() => import('@/pages/Dashboard'))
 const Orders = lazy(() => import('@/pages/Orders'))
 const AddOrder = lazy(() => import('@/pages/AddOrder'))
+const Ship = lazy(() => import('@/pages/Ship'))
 const Placeholder = lazy(() => import('@/pages/Placeholder'))
 
 // Simple password gate
@@ -79,7 +80,7 @@ function AppContent() {
             <Route path="/ai-chat" element={<Placeholder page="ai-chat" />} />
             <Route path="/gz" element={<Placeholder page="gz" />} />
             <Route path="/ems" element={<Placeholder page="ems" />} />
-            <Route path="/ship" element={<Placeholder page="ship" />} />
+            <Route path="/ship" element={<Ship />} />
             <Route path="/stock" element={<Placeholder page="stock" />} />
             <Route path="/products" element={<Placeholder page="products" />} />
             <Route path="/tools" element={<Placeholder page="tools" />} />

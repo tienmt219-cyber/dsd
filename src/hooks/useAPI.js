@@ -73,12 +73,20 @@ export function useAPI() {
     if (!globalCache) fetchData()
   }, [fetchData])
 
-  // Derived data helpers
-  const orders = data?.orders || []
-  const catalog = data?.catalog || []
-  const customers = data?.customers || []
+  // Derived data helpers — attach _row (1-indexed sheet row, header = row 1)
+  const orders = (data?.orders || []).map((o, i) =>
+    o._row !== undefined ? o : Object.assign(Array.from(o), { _row: i + 2 })
+  )
+  const catalog = (data?.catalog || []).map((c, i) =>
+    c._row !== undefined ? c : Object.assign(Array.from(c), { _row: i + 2 })
+  )
+  const customers = (data?.customers || []).map((c, i) =>
+    c._row !== undefined ? c : Object.assign(Array.from(c), { _row: i + 2 })
+  )
   const stock = data?.stock || []
-  const surplus = data?.surplus || []
+  const surplus = (data?.surplus || []).map((s, i) =>
+    s._row !== undefined ? s : Object.assign(Array.from(s), { _row: i + 2 })
+  )
 
   return {
     data,
