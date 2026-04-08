@@ -16,7 +16,10 @@ const GZ = lazy(() => import('@/pages/GZ'))
 const EMS = lazy(() => import('@/pages/EMS'))
 const Stock = lazy(() => import('@/pages/Stock'))
 const Products = lazy(() => import('@/pages/Products'))
-const Placeholder = lazy(() => import('@/pages/Placeholder'))
+const Tools = lazy(() => import('@/pages/Tools'))
+const CK = lazy(() => import('@/pages/CK'))
+const AIOrder = lazy(() => import('@/pages/AIOrder'))
+const AIChat = lazy(() => import('@/pages/AIChat'))
 
 // Simple password gate
 function AuthGate({ children }) {
@@ -80,15 +83,15 @@ function AppContent() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/orders" element={<Orders />} />
             <Route path="/add-order" element={<AddOrder />} />
-            <Route path="/ai-order" element={<Placeholder page="ai-order" />} />
-            <Route path="/ai-chat" element={<Placeholder page="ai-chat" />} />
+            <Route path="/ai-order" element={<AIOrder />} />
+            <Route path="/ai-chat" element={<AIChat />} />
             <Route path="/gz" element={<GZ />} />
             <Route path="/ems" element={<EMS />} />
             <Route path="/ship" element={<Ship />} />
             <Route path="/stock" element={<Stock />} />
             <Route path="/products" element={<Products />} />
-            <Route path="/tools" element={<Placeholder page="tools" />} />
-            <Route path="/ck" element={<Placeholder page="ck" />} />
+            <Route path="/tools" element={<Tools />} />
+            <Route path="/ck" element={<CK />} />
           </Routes>
         </Suspense>
       </Layout>
