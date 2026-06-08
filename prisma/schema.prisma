@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("staff") // admin, manager, staff
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+  shifts    Shift[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  image     String?
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String   @unique
+  barcode     String?  @unique
+  description String?
+  categoryId  String
+  costPrice   Float    @default(0)
+  sellPrice   Float    @default(0)
+  image       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category    Category          @relation(fields: [categoryId], references: [id])
+  variants    ProductVariant[]
+  orderItems  OrderItem[]
+  stockMovements StockMovement[]
+}
+
+model ProductVariant {
+  id        String @id @default(cuid())
+  productId String
+  size      String
+  color     String
+  sku       String @unique
+  barcode   String? @unique
+  costPrice Float  @default(0)
+  sellPrice Float  @default(0)
+  stock     Int    @default(0)
+  active    Boolean @default(true)
+
+  product    Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  stockMovements StockMovement[]
+
+  @@unique([productId, size, color])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?  @unique
+  email     String?
+  address   String?
+  points    Int      @default(0)
+  totalSpent Float   @default(0)
+  debt      Float    @default(0)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+  debtPayments DebtPayment[]
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  orderNumber   String   @unique
+  customerId    String?
+  userId        String
+  subtotal      Float    @default(0)
+  discount      Float    @default(0)
+  discountType  String   @default("amount") // amount, percent
+  total         Float    @default(0)
+  paid          Float    @default(0)
+  debt          Float    @default(0)
+  paymentMethod String   @default("cash") // cash, transfer, card
+  note          String?
+  status        String   @default("completed") // completed, returned, cancelled
+  createdAt     DateTime @default(now())
+
+  customer   Customer?   @relation(fields: [customerId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String
+  variantId  String?
+  name       String
+  variantInfo String?
+  quantity   Int
+  price      Float
+  discount   Float   @default(0)
+  total      Float
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+}
+
+model StockMovement {
+  id         String   @id @default(cuid())
+  productId  String
+  variantId  String?
+  type       String   // in, out, adjustment
+  quantity   Int
+  reason     String?
+  reference  String?
+  createdAt  DateTime @default(now())
+
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+}
+
+model DebtPayment {
+  id         String   @id @default(cuid())
+  customerId String
+  amount     Float
+  note       String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+}
+
+model Shift {
+  id           String    @id @default(cuid())
+  userId       String
+  startAmount  Float     @default(0)
+  endAmount    Float?
+  startedAt    DateTime  @default(now())
+  endedAt      DateTime?
+  note         String?
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Setting {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
