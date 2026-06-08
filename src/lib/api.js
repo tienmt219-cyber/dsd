@@ -13,57 +13,85 @@ async function callAPI(action, data = {}) {
 }
 
 export async function getData() {
-  return callAPI('getData')
+  const res = await fetch(API_URL)
+  if (!res.ok) throw new Error(`API error: ${res.status}`)
+  const json = await res.json()
+  if (json.error) throw new Error(json.error)
+  return json
 }
 
 export async function addOrder(order) {
-  return callAPI('addOrder', order)
+  return callAPI('addOrder', { order })
 }
 
 export async function addBatchOrders(orders) {
   return callAPI('addBatchOrders', { orders })
 }
 
-export async function updateCell(sheet, row, col, value) {
-  return callAPI('updateCell', { sheet, row, col, value })
+export async function updateStatus(rowIndex, newStatus, verify) {
+  return callAPI('updateStatus', { rowIndex, newStatus, verify })
 }
 
-export async function bulkUpdateStatus(rows, status, extra = {}) {
-  return callAPI('bulkUpdateStatus', { rows, status, ...extra })
+export async function bulkUpdateStatus(items, tracking) {
+  return callAPI('bulkUpdateStatus', { items, tracking })
 }
 
-export async function addStock(items) {
-  return callAPI('addStock', { items })
+export async function softDelete(rowIndex, verify) {
+  return callAPI('softDelete', { rowIndex, verify })
+}
+
+export async function editOrder(rowIndex, fields, verify) {
+  return callAPI('editOrder', { rowIndex, fields, verify })
+}
+
+export async function addStock(item) {
+  return callAPI('addStock', { item })
+}
+
+export async function shipItems(items, tracking) {
+  return callAPI('shipItems', { items, tracking })
 }
 
 export async function addProduct(product) {
-  return callAPI('addProduct', product)
+  return callAPI('addProduct', { product })
 }
 
-export async function updateProduct(row, product) {
-  return callAPI('updateProduct', { row, ...product })
+export async function updateProduct(rowIndex, product) {
+  return callAPI('updateProduct', { rowIndex, product })
 }
 
-export async function saveProductImage(productCode, imageData) {
-  return callAPI('saveProductImage', { productCode, imageData })
+export async function saveAddress(name, address, fb) {
+  return callAPI('saveAddress', { name, address, fb })
 }
 
-export async function saveAddress(customerName, address) {
-  return callAPI('saveAddress', { customerName, ...address })
+export async function lookupOrders(name, phone) {
+  return callAPI('lookupOrders', { name, phone })
 }
 
-export async function shipItems(items) {
-  return callAPI('shipItems', { items })
+export async function batchMarkCK(items) {
+  return callAPI('batchMarkCK', { items })
 }
 
-export async function markCK(rows, date) {
-  return callAPI('markCK', { rows, date })
+export async function batchUnmarkCK(items) {
+  return callAPI('batchUnmarkCK', { items })
 }
 
-export async function cancelOrder(row) {
-  return callAPI('cancelOrder', { row })
+export async function saveEMSHistory(ems) {
+  return callAPI('saveEMSHistory', { ems })
 }
 
-export async function getSheetsSummary() {
-  return callAPI('getSheetsSummary')
+export async function editEMSHistory(rowIndex, ems) {
+  return callAPI('editEMSHistory', { rowIndex, ems })
+}
+
+export async function deleteEMSHistory(rowIndex) {
+  return callAPI('deleteEMSHistory', { rowIndex })
+}
+
+export async function shipEMSWithStock(ems) {
+  return callAPI('shipEMSWithStock', { ems })
+}
+
+export async function addSurplus(maSP, size, color, qty, status) {
+  return callAPI('addSurplus', { maSP, size, color, qty, status })
 }

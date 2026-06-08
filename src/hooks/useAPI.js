@@ -1,15 +1,42 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { getData } from '@/lib/api'
 
-const CACHE_DURATION = 20000 // 20 seconds
+const CACHE_DURATION = 20000
+const AUTO_REFRESH_INTERVAL = 60000
 
 let globalCache = null
 let globalCacheTime = 0
 let globalPromise = null
 let globalListeners = new Set()
+let refreshPaused = false
 
 function notifyListeners() {
   globalListeners.forEach(fn => fn())
+}
+
+export function pauseAutoRefresh() {
+  refreshPaused = true
+}
+
+export function resumeAutoRefresh() {
+  refreshPaused = false
+}
+
+export function updateGlobalOrders(updater) {
+  if (!globalCache || !globalCache.orders) return
+  globalCache = {
+    ...globalCache,
+    orders: typeof updater === 'function' ? updater(globalCache.orders) : updater,
+  }
+  globalCacheTime = Date.now()
+  notifyListeners()
+}
+
+export function syncGlobalData(serverData) {
+  if (!serverData) return
+  globalCache = serverData
+  globalCacheTime = Date.now()
+  notifyListeners()
 }
 
 export function useAPI() {
@@ -44,7 +71,7 @@ export function useAPI() {
 
     if (globalPromise) return globalPromise
 
-    setLoading(true)
+    setLoading(prev => !globalCache ? true : prev)
     setError(null)
 
     globalPromise = getData()
@@ -73,28 +100,28 @@ export function useAPI() {
     if (!globalCache) fetchData()
   }, [fetchData])
 
-  // Derived data helpers — attach _row (1-indexed sheet row, header = row 1)
-  const orders = (data?.orders || []).map((o, i) =>
-    o._row !== undefined ? o : Object.assign(Array.from(o), { _row: i + 2 })
-  )
-  const catalog = (data?.catalog || []).map((c, i) =>
-    c._row !== undefined ? c : Object.assign(Array.from(c), { _row: i + 2 })
-  )
-  const customers = (data?.customers || []).map((c, i) =>
-    c._row !== undefined ? c : Object.assign(Array.from(c), { _row: i + 2 })
-  )
+  useEffect(() => {
+    const iv = setInterval(() => {
+      if (!refreshPaused) fetchData(true).catch(() => {})
+    }, AUTO_REFRESH_INTERVAL)
+    return () => clearInterval(iv)
+  }, [fetchData])
+
+  const orders = data?.orders || []
+  const catalog = data?.catalog || []
   const stock = data?.stock || []
-  const surplus = (data?.surplus || []).map((s, i) =>
-    s._row !== undefined ? s : Object.assign(Array.from(s), { _row: i + 2 })
-  )
+  const surplus = data?.surplus || []
+  const addresses = data?.addresses || {}
+  const emsHistory = data?.emsHistory || []
 
   return {
     data,
     orders,
     catalog,
-    customers,
     stock,
     surplus,
+    addresses,
+    emsHistory,
     loading,
     error,
     refresh,

@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/Card'
+import { Card, CardContent } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { LoadingScreen } from '@/components/ui/Loading'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useAPI } from '@/hooks/useAPI'
-import { markCK } from '@/lib/api'
+import { pauseAutoRefresh, resumeAutoRefresh, updateGlobalOrders, syncGlobalData } from '@/hooks/useAPI'
+import { batchMarkCK, batchUnmarkCK } from '@/lib/api'
 import { STATUS } from '@/lib/constants'
-import { formatJPY, daysSince, cn } from '@/lib/utils'
+import { formatJPY, daysSince, cn, parseNotes } from '@/lib/utils'
 import {
-  CreditCard, CheckCircle, Clock, AlertTriangle, ChevronDown, ChevronUp
+  CreditCard, CheckCircle, Clock, AlertTriangle, ChevronDown, ChevronUp, Undo2
 } from 'lucide-react'
 
 function urgencyLevel(days) {
@@ -24,21 +25,19 @@ const urgencyStyles = {
   green: { bg: 'border-success/40', badge: 'bg-success text-white', label: 'Mới gửi' },
 }
 
-function CustomerCKCard({ group, onMarked }) {
+function CustomerCKCard({ group, onMarkCK }) {
   const [expanded, setExpanded] = useState(true)
   const [marking, setMarking] = useState(false)
 
   const days = group.oldestDays
   const urgency = urgencyLevel(days)
   const style = urgencyStyles[urgency]
-  const total = group.orders.reduce((s, o) => s + (Number(o.price) || 0) * (Number(o.qty) || 1), 0)
+  const total = group.total
 
   const handleMark = async () => {
     setMarking(true)
     try {
-      const today = new Date().toISOString().slice(0, 10)
-      await markCK(group.orders.map(o => o._row), today)
-      onMarked()
+      await onMarkCK(group)
     } catch (err) {
       alert('Lỗi: ' + err.message)
     } finally {
@@ -73,11 +72,11 @@ function CustomerCKCard({ group, onMarked }) {
         <>
           <div className="border-t border-border/30 divide-y divide-border/20">
             {group.orders.map(o => (
-              <div key={o._row} className="flex items-center gap-2 px-4 py-2 text-sm">
-                <span className="font-mono text-xs text-text-secondary">{o.code}</span>
-                <span className="truncate flex-1">{o.name}</span>
-                <span className="text-xs text-text-muted">{o.size} {o.color} x{o.qty}</span>
-                <span className="font-medium shrink-0">{formatJPY((Number(o.price) || 0) * o.qty)}</span>
+              <div key={o._rowIndex} className="flex items-center gap-2 px-4 py-2 text-sm">
+                <span className="font-mono text-xs text-text-secondary">{o["Mã SP"]}</span>
+                <span className="truncate flex-1">{o["Tên Sp"] || o["Mã SP"]}</span>
+                <span className="text-xs text-text-muted">{o["SIZE"]} {o["COLOR"]} x{o["Số lượng"] || 1}</span>
+                <span className="font-medium shrink-0">{formatJPY((Number(o["Giá sp"]) || 0) * Number(o["Số lượng"] || 1))}</span>
               </div>
             ))}
           </div>
@@ -98,37 +97,91 @@ function CustomerCKCard({ group, onMarked }) {
   )
 }
 
+function PaidCustomerCard({ group, onUnmarkCK }) {
+  const [expanded, setExpanded] = useState(false)
+  const [unmarking, setUnmarking] = useState(false)
+
+  const handleUnmark = async () => {
+    setUnmarking(true)
+    try {
+      await onUnmarkCK(group)
+    } catch (err) {
+      alert('Lỗi: ' + err.message)
+    } finally {
+      setUnmarking(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent>
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => setExpanded(e => !e)}
+        >
+          <CheckCircle className="w-4 h-4 text-success" />
+          <span className="font-medium flex-1">{group.name}</span>
+          <span className="text-xs text-text-muted">{group.orders.length} đơn · {formatJPY(group.total)}</span>
+          {expanded ? <ChevronUp className="w-3 h-3 text-text-muted" /> : <ChevronDown className="w-3 h-3 text-text-muted" />}
+        </div>
+        {expanded && (
+          <>
+            <div className="space-y-1 mt-2">
+              {group.orders.map(o => (
+                <div key={o._rowIndex} className="flex items-center gap-2 text-xs text-text-secondary">
+                  <span className="font-mono">{o["Mã SP"]}</span>
+                  <span className="truncate flex-1">{o["Tên Sp"]} {o["SIZE"]} {o["COLOR"]}</span>
+                  <span className="font-medium text-text">{formatJPY((Number(o["Giá sp"]) || 0) * Number(o["Số lượng"] || 1))}</span>
+                </div>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleUnmark}
+              disabled={unmarking}
+              className="w-full mt-2"
+            >
+              {unmarking ? 'Đang xử lý...' : <><Undo2 className="w-3 h-3" /> Bỏ CK</>}
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function CK() {
   const { orders, loading, refresh } = useAPI()
-  const [tab, setTab] = useState('chua-ck') // chua-ck | da-ck
+  const [tab, setTab] = useState('chua-ck')
 
-  // Group "Đã gửi" orders by customer, check CK status from notes
   const { unpaidGroups, paidGroups } = useMemo(() => {
     const unpaid = {}
     const paid = {}
 
     orders.forEach(o => {
-      if (o[8] !== STATUS.DA_GUI) return
-      const notes = (o[8 + 1] || '').toString() // notes stored after status or in same col
-      const name = o[0]
-      const item = {
-        _row: o._row,
-        code: o[2], name: o[1], size: o[3], color: o[4],
-        qty: Number(o[5]) || 1, price: Number(o[6]) || 0,
-        orderDate: o[7],
-      }
+      const status = String(o["TRẠNG THÁI"] || '').trim()
+      if (status !== STATUS.DA_GUI) return
 
-      // Check if CK'd — notes field or separate lookup
-      // For now, treat all "Đã gửi" without CK note as unpaid
-      const hasCK = notes.includes('💰CK')
+      const name = String(o["Tên khách"] || '').trim()
+      if (!name) return
+
+      const note = o._note || ''
+      const hasCK = note.includes('💰CK')
+      const qty = Number(o["Số lượng"]) || 1
+      const price = Number(o["Giá sp"]) || 0
 
       if (hasCK) {
-        if (!paid[name]) paid[name] = { name, orders: [], oldestDays: 0 }
-        paid[name].orders.push(item)
+        if (!paid[name]) paid[name] = { name, orders: [], oldestDays: 0, total: 0 }
+        paid[name].orders.push(o)
+        paid[name].total += price * qty
       } else {
-        if (!unpaid[name]) unpaid[name] = { name, orders: [], oldestDays: 0 }
-        unpaid[name].orders.push(item)
-        const d = daysSince(o[7])
+        if (!unpaid[name]) unpaid[name] = { name, orders: [], oldestDays: 0, total: 0 }
+        unpaid[name].orders.push(o)
+        unpaid[name].total += price * qty
+        const sentMatch = note.match(/📮SENT (\d{4}-\d{2}-\d{2})/)
+        const dateStr = sentMatch ? sentMatch[1] : String(o["NGÀY OD"] || '').slice(0, 10)
+        const d = daysSince(dateStr)
         if (d !== null && d > (unpaid[name].oldestDays || 0)) {
           unpaid[name].oldestDays = d
         }
@@ -142,12 +195,78 @@ export default function CK() {
     }
   }, [orders])
 
+  const handleMarkCK = async (group) => {
+    const today = new Date().toISOString().slice(0, 10)
+    const rowSet = new Set(group.orders.map(o => o._rowIndex))
+
+    pauseAutoRefresh()
+
+    updateGlobalOrders(prev =>
+      prev.map(o => rowSet.has(o._rowIndex)
+        ? { ...o, _note: (o._note || '') + ' 💰CK ' + today }
+        : o
+      )
+    )
+
+    try {
+      const items = group.orders.map(o => ({
+        rowIndex: o._rowIndex,
+        tenKhach: String(o["Tên khách"] || '').trim(),
+        maSP: String(o["Mã SP"] || ''),
+      }))
+      const r = await batchMarkCK(items)
+      if (r.data) {
+        syncGlobalData(r.data)
+      }
+      if (r.marked === 0) {
+        refresh()
+      }
+    } catch {
+      refresh()
+    } finally {
+      resumeAutoRefresh()
+    }
+  }
+
+  const handleUnmarkCK = async (group) => {
+    const rowSet = new Set(group.orders.map(o => o._rowIndex))
+
+    pauseAutoRefresh()
+
+    updateGlobalOrders(prev =>
+      prev.map(o => rowSet.has(o._rowIndex)
+        ? { ...o, _note: (o._note || '').replace(/\s*💰CK\s*\d{4}-\d{2}-\d{2}/, '') }
+        : o
+      )
+    )
+
+    try {
+      const items = group.orders.map(o => ({
+        rowIndex: o._rowIndex,
+        tenKhach: String(o["Tên khách"] || '').trim(),
+        maSP: String(o["Mã SP"] || ''),
+      }))
+      const r = await batchUnmarkCK(items)
+      if (r.data) {
+        syncGlobalData(r.data)
+      }
+      if (r.unmarked === 0) {
+        refresh()
+      }
+    } catch {
+      refresh()
+    } finally {
+      resumeAutoRefresh()
+    }
+  }
+
   if (loading) return <LoadingScreen />
 
   const stats = {
     red: unpaidGroups.filter(g => urgencyLevel(g.oldestDays) === 'red').length,
     yellow: unpaidGroups.filter(g => urgencyLevel(g.oldestDays) === 'yellow').length,
     green: unpaidGroups.filter(g => urgencyLevel(g.oldestDays) === 'green').length,
+    totalDebt: unpaidGroups.reduce((s, g) => s + g.total, 0),
   }
 
   return (
@@ -156,8 +275,7 @@ export default function CK() {
         <CreditCard className="w-6 h-6 text-primary" /> CK Tracking
       </h1>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
           <CardContent className="text-center py-3">
             <p className="text-2xl font-bold text-danger">{stats.red}</p>
@@ -176,9 +294,14 @@ export default function CK() {
             <p className="text-xs text-text-secondary">Mới gửi &lt;3 ngày</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="text-center py-3">
+            <p className="text-2xl font-bold text-primary">{formatJPY(stats.totalDebt)}</p>
+            <p className="text-xs text-text-secondary">Tổng nợ CK</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-bg-hover rounded-lg p-1">
         <button
           onClick={() => setTab('chua-ck')}
@@ -202,7 +325,7 @@ export default function CK() {
         ) : (
           <div className="space-y-3">
             {unpaidGroups.map(g => (
-              <CustomerCKCard key={g.name} group={g} onMarked={refresh} />
+              <CustomerCKCard key={g.name} group={g} onMarkCK={handleMarkCK} />
             ))}
           </div>
         )
@@ -214,24 +337,7 @@ export default function CK() {
         ) : (
           <div className="space-y-3">
             {paidGroups.map(g => (
-              <Card key={g.name}>
-                <CardContent>
-                  <div className="flex items-center gap-2 mb-2">
-                    <CheckCircle className="w-4 h-4 text-success" />
-                    <span className="font-medium">{g.name}</span>
-                    <span className="text-xs text-text-muted ml-auto">{g.orders.length} đơn</span>
-                  </div>
-                  <div className="space-y-1">
-                    {g.orders.map(o => (
-                      <div key={o._row} className="flex items-center gap-2 text-xs text-text-secondary">
-                        <span className="font-mono">{o.code}</span>
-                        <span className="truncate flex-1">{o.name} {o.size} {o.color}</span>
-                        <span className="font-medium text-text">{formatJPY(o.price * o.qty)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <PaidCustomerCard key={g.name} group={g} onUnmarkCK={handleUnmarkCK} />
             ))}
           </div>
         )
