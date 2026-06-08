@@ -527,6 +527,7 @@ function App(){
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
   const [search,setSearch]=useState("");const [filt,setFilt]=useState("Tất cả");const [custFilter,setCustFilter]=useState("");
   const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");
+  const ckOverrides=useRef(new Map());
   const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
   const saveBank=v=>{setBank(v);try{localStorage.setItem("dt_bank",v)}catch(e){}};
   const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
@@ -617,7 +618,17 @@ function App(){
     }
     return clean;
   };
-  const sync=useCallback(d=>{if(d&&d.orders){setOrders(d.orders);setStock(d.stock||[]);setCatalog(d.catalog||[]);setAddrs(sanitizeAddrs(d.addresses||{}));setSurplus(d.surplus||[]);setEmsHistory(d.emsHistory||[]);setLastSync(new Date().toLocaleTimeString("vi-VN"));}},[]);
+  const sync=useCallback(d=>{if(d&&d.orders){
+    let merged=d.orders;
+    if(ckOverrides.current.size>0){
+      merged=d.orders.map(o=>{
+        const ov=ckOverrides.current.get(o._rowIndex);
+        if(!ov)return o;
+        if((o._note||"").includes("💰CK")){ckOverrides.current.delete(o._rowIndex);return o;}
+        return {...o,_note:ov};
+      });
+    }
+    setOrders(merged);setStock(d.stock||[]);setCatalog(d.catalog||[]);setAddrs(sanitizeAddrs(d.addresses||{}));setSurplus(d.surplus||[]);setEmsHistory(d.emsHistory||[]);setLastSync(new Date().toLocaleTimeString("vi-VN"));}},[]);
   const load=useCallback(async s=>{if(!s)setLoading(true);try{const d=await GET();if(d.success)sync(d);}catch(e){if(!s)msg("❌ "+e.message);}if(!s)setLoading(false);},[msg,sync]);
   useEffect(()=>{if(auth)load();},[auth,load]);
   const busyRef=useRef(false);
@@ -766,37 +777,39 @@ function App(){
     await safePost({action:"bulkUpdateStatus",items:data},`↩ Hoàn tác ${items.length} đơn → Về kho`);
   };
 
-  // ★ CK: optimistic local update + API call + sync server data
+  // ★ CK: optimistic + ckOverrides bảo vệ qua mọi sync/load
   const doCK=async(customerItems,customerName,customerRev)=>{
     const rowSet=new Set(customerItems.map(o=>o._rowIndex));
     const today=new Date().toISOString().slice(0,10);
-    // 1. Optimistic: thêm 💰CK vào _note NGAY
+    // 1. Lưu override + optimistic update
+    customerItems.forEach(o=>{ckOverrides.current.set(o._rowIndex,(o._note||"")+" 💰CK "+today);});
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"")+" 💰CK "+today}:o));
     msg(`💰 ${customerName} đã CK ¥${fmt(customerRev)}`);
-    // 2. Gọi API + sync server data (batchMarkCK là heavyAction → trả r.data)
+    // 2. Gọi API
     setBusy(true);
     try{
       const r=await POST({action:"batchMarkCK",items:customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}))});
-      if(r.error){msg("❌ "+r.error);load();}
-      else if(r.marked===0){msg("⚠️ Không mark được — refresh");load();}
+      if(r.error){msg("❌ "+r.error);}
+      else if(r.marked===0){msg("⚠️ Server: 0 marked — kiểm tra lại");}
       else if(r.data){sync(r.data);}
-    }catch(e){msg("❌ "+e.message);load();}
+    }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
 
   const doUnCK=async(customerItems,customerName)=>{
     const rowSet=new Set(customerItems.map(o=>o._rowIndex));
-    // 1. Optimistic: xoá 💰CK
+    // 1. Xoá override + optimistic
+    customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"").replace(/\s*💰CK\s*\d{4}-\d{2}-\d{2}/,"")}:o));
     msg(`↩ ${customerName}: bỏ CK`);
-    // 2. Gọi API + sync server data
+    // 2. Gọi API
     setBusy(true);
     try{
       const r=await POST({action:"batchUnmarkCK",items:customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}))});
-      if(r.error){msg("❌ "+r.error);load();}
-      else if(r.unmarked===0){msg("⚠️ Không bỏ CK được");load();}
+      if(r.error){msg("❌ "+r.error);}
+      else if(r.unmarked===0){msg("⚠️ Không bỏ CK được");}
       else if(r.data){sync(r.data);}
-    }catch(e){msg("❌ "+e.message);load();}
+    }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
 
