@@ -527,8 +527,9 @@ function App(){
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
   const [search,setSearch]=useState("");const [filt,setFilt]=useState("Tất cả");const [custFilter,setCustFilter]=useState("");
   const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");
-  const ckOverrides=useRef(new Map((() => { try { return JSON.parse(localStorage.getItem("dt_ck_overrides") || "[]"); } catch(e) { return []; } })()));
-  const saveCkOverrides=()=>{try{localStorage.setItem("dt_ck_overrides",JSON.stringify([...ckOverrides.current]));}catch(e){}};
+  const ckOverrides=useRef(null);
+  if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
+  const saveCkOverrides=function(){try{localStorage.setItem("dt_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
   const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
   const saveBank=v=>{setBank(v);try{localStorage.setItem("dt_bank",v)}catch(e){}};
   const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
