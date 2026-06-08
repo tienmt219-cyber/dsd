@@ -104,7 +104,7 @@ const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"
 async function GET(){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
-    try{const r=await POST({action:"getData"});clearTimeout(t);return r;}
+    try{const r=await fetch(API,{signal:c.signal});clearTimeout(t);return r.json();}
     catch(e){clearTimeout(t);if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
   }
 }
@@ -527,7 +527,8 @@ function App(){
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
   const [search,setSearch]=useState("");const [filt,setFilt]=useState("Tất cả");const [custFilter,setCustFilter]=useState("");
   const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");
-  const ckOverrides=useRef(new Map());
+  const ckOverrides=useRef(new Map((() => { try { return JSON.parse(localStorage.getItem("dt_ck_overrides") || "[]"); } catch(e) { return []; } })()));
+  const saveCkOverrides=()=>{try{localStorage.setItem("dt_ck_overrides",JSON.stringify([...ckOverrides.current]));}catch(e){}};
   const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
   const saveBank=v=>{setBank(v);try{localStorage.setItem("dt_bank",v)}catch(e){}};
   const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
@@ -624,7 +625,7 @@ function App(){
       merged=d.orders.map(o=>{
         const ov=ckOverrides.current.get(o._rowIndex);
         if(!ov)return o;
-        if((o._note||"").includes("💰CK")){ckOverrides.current.delete(o._rowIndex);return o;}
+        if((o._note||"").includes("💰CK")){ckOverrides.current.delete(o._rowIndex);saveCkOverrides();return o;}
         return {...o,_note:ov};
       });
     }
@@ -781,8 +782,9 @@ function App(){
   const doCK=async(customerItems,customerName,customerRev)=>{
     const rowSet=new Set(customerItems.map(o=>o._rowIndex));
     const today=new Date().toISOString().slice(0,10);
-    // 1. Lưu override + optimistic update
+    // 1. Lưu override + localStorage + optimistic update
     customerItems.forEach(o=>{ckOverrides.current.set(o._rowIndex,(o._note||"")+" 💰CK "+today);});
+    saveCkOverrides();
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"")+" 💰CK "+today}:o));
     msg(`💰 ${customerName} đã CK ¥${fmt(customerRev)}`);
     // 2. Gọi API — debug: hiện r.marked + kiểm tra data
@@ -807,8 +809,9 @@ function App(){
 
   const doUnCK=async(customerItems,customerName)=>{
     const rowSet=new Set(customerItems.map(o=>o._rowIndex));
-    // 1. Xoá override + optimistic
+    // 1. Xoá override + localStorage + optimistic
     customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
+    saveCkOverrides();
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"").replace(/\s*💰CK\s*\d{4}-\d{2}-\d{2}/,"")}:o));
     msg(`↩ ${customerName}: bỏ CK`);
     // 2. Gọi API
