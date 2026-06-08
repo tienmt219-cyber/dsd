@@ -104,7 +104,7 @@ const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"
 async function GET(){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
-    try{const r=await fetch(API,{signal:c.signal});clearTimeout(t);return r.json();}
+    try{const r=await fetch(API+"?_="+Date.now(),{signal:c.signal,cache:"no-store"});clearTimeout(t);return r.json();}
     catch(e){clearTimeout(t);if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
   }
 }
