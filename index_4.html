@@ -1181,91 +1181,7 @@ function App(){
         {tab==="tools"&&<ToolsTab catalog={catalog} active={active} orders={orders} stock={stock} shipped={shipped} stats={stats} bank={bank} t={t} msg={msg} safePost={safePost} busy={busy}/>}
 
         {/* ĐÃ GỬI */}
-        {tab==="history"&&<div>
-          {(()=>{
-            const allSent=orders.filter(o=>o["TRẠNG THÁI"]==="Đã gửi");
-            const chuaCK=allSent.filter(o=>!(o._note||"").includes("💰CK"));
-            const daCK=allSent.filter(o=>(o._note||"").includes("💰CK"));
-            // Group theo khách
-            const groupBy=(list)=>{const m={};list.forEach(o=>{const n=String(o["Tên khách"]||"").trim();const fb=String(o["Link fb"]||"").trim();const key=n+(fb?"|"+normalizeFB(fb):"");if(!m[key])m[key]={items:[],rev:0,fb:fb,name:n};m[key].items.push(o);m[key].rev+=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);});return Object.entries(m).sort((a,b)=>b[1].rev-a[1].rev);};
-            const chuaCKgrp=groupBy(chuaCK);
-            const daCKgrp=groupBy(daCK);
-            const totalChuaCK=chuaCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
-            const totalDaCK=daCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
-            return <>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <h2 style={{fontSize:18,fontWeight:800,color:t.tx}}>💳 Chuyển khoản</h2>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-              <div onClick={()=>setCkView("chua")} style={{background:ckView==="chua"?"#FEF2F2":"transparent",borderRadius:10,padding:12,border:ckView==="chua"?"2px solid #DC2626":`1px solid ${t.bd}`,cursor:"pointer",textAlign:"center"}}>
-                <div style={{fontSize:9,color:"#DC2626",fontWeight:700}}>🔴 CHƯA CK</div>
-                <div style={{fontSize:20,fontWeight:800,color:"#DC2626"}}>{chuaCKgrp.length}</div>
-                <div style={{fontSize:10,color:"#DC2626"}}>khách · ¥{fmt(totalChuaCK)}</div>
-              </div>
-              <div onClick={()=>setCkView("da")} style={{background:ckView==="da"?"#D1FAE5":"transparent",borderRadius:10,padding:12,border:ckView==="da"?"2px solid #16A34A":`1px solid ${t.bd}`,cursor:"pointer",textAlign:"center"}}>
-                <div style={{fontSize:9,color:"#16A34A",fontWeight:700}}>🟢 ĐÃ CK</div>
-                <div style={{fontSize:20,fontWeight:800,color:"#16A34A"}}>{daCKgrp.length}</div>
-                <div style={{fontSize:10,color:"#16A34A"}}>khách · ¥{fmt(totalDaCK)}</div>
-              </div>
-            </div>
-
-            {ckView==="chua"&&<>
-              {chuaCKgrp.length===0&&<div style={{textAlign:"center",padding:20,color:t.dm}}>🎉 Tất cả đã CK!</div>}
-              {chuaCKgrp.map(([name,c],i)=>{
-                const isPhone=c.fb.startsWith("📱");
-                const sentDays=c.items.reduce((mx,o)=>{const m=(o._note||"").match(/📮SENT (\d{4}-\d{2}-\d{2})/);if(m){const d=Math.floor((Date.now()-new Date(m[1]))/864e5);return d>mx?d:mx;}return mx;},0);
-                return <div key={i} style={{background:"#FEF2F2",borderRadius:10,padding:12,marginBottom:8,borderLeft:`4px solid ${sentDays>7?"#DC2626":sentDays>3?"#F59E0B":"#DC2626"}`}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                  <Avatar name={name} fb={c.fb} size={28}/>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:700,color:t.tx,cursor:"pointer"}} onClick={()=>setMCust(c.name)}>{c.name}</div>
-                    <div style={{fontSize:10,color:"#DC2626",fontWeight:600}}>{c.items.length} món · ¥{fmt(c.rev)}{sentDays>0?` · ${sentDays} ngày`:""}</div>
-                  </div>
-                  {sentDays>=7&&<span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#DC2626",color:"#fff",fontWeight:700}}>QUÁ HẠN</span>}
-                </div>
-                {/* FB/SĐT link */}
-                {c.fb&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,padding:"6px 8px",background:"#fff",borderRadius:6,border:"1px solid #FECACA"}}>
-                  {isPhone?<>
-                    <span style={{fontSize:12}}>📱</span>
-                    <a href={`tel:${c.fb.replace("📱","")}`} style={{flex:1,color:"#7C3AED",fontSize:12,fontWeight:600,textDecoration:"none"}}>{c.fb.replace("📱","")}</a>
-                  </>:<>
-                    <span style={{fontSize:12}}>💬</span>
-                    <a href={c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb} target="_blank" rel="noopener" style={{flex:1,color:"#7C3AED",fontSize:12,fontWeight:600,textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.fb.replace("https://","").replace("www.facebook.com/","fb/").replace("m.facebook.com/","fb/")}</a>
-                  </>}
-                </div>}
-                <div style={{fontSize:10,color:t.dm,marginBottom:6,padding:"4px 0",borderTop:`1px solid #FECACA`}}>
-                  {c.items.map((o,j)=><div key={j} style={{padding:"2px 0"}}>{o["Mã SP"]} {o["SIZE"]} {o["COLOR"]} x{o["Số lượng"]} · ¥{fmt(o["Giá sp"])}</div>)}
-                </div>
-                <div style={{display:"flex",gap:6}}>
-                  <button onClick={()=>doCK(c.items,c.name,c.rev)} disabled={busy} style={{flex:1,padding:8,borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💰 Đã CK</button>
-                  <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;navigator.clipboard?.writeText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:8,borderRadius:8,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
-                  <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.items.length} món của ${c.name} → Về kho?`))return;await doUnship(c.items);}} disabled={busy} style={{padding:8,borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:11,fontWeight:600,cursor:"pointer",opacity:busy?.5:1}} title="Hoàn tác → Về kho">↩</button>
-                </div>
-              </div>;})}
-            </>}
-
-            {ckView==="da"&&<>
-              {daCKgrp.length===0&&<div style={{textAlign:"center",padding:20,color:t.dm}}>Chưa ai CK</div>}
-              {daCKgrp.map(([name,c],i)=><div key={i} style={{background:"#D1FAE5",borderRadius:10,padding:10,marginBottom:6,borderLeft:"4px solid #16A34A"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                  <Avatar name={name} fb={c.fb} size={24}/>
-                  <div style={{flex:1}}>
-                    <span style={{fontWeight:600,color:t.tx}}>{c.name}</span>
-                    <span style={{fontSize:10,color:"#16A34A",marginLeft:6}}>{c.items.length} món · ¥{fmt(c.rev)} ✅</span>
-                  </div>
-                </div>
-                <div style={{fontSize:10,color:t.dm,marginBottom:4,paddingLeft:32}}>
-                  {c.items.map((o,j)=><div key={j}>{o["Mã SP"]} {o["SIZE"]} {o["COLOR"]} x{o["Số lượng"]}</div>)}
-                </div>
-                <div style={{display:"flex",gap:4,paddingLeft:32}}>
-                  <button onClick={()=>{if(!confirm(`Bỏ CK của ${c.name}? → Quay lại Chưa CK`))return;doUnCK(c.items,c.name);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid #F59E0B`,background:"#FEF3C7",color:"#92400E",fontSize:10,cursor:"pointer"}}>↩ Bỏ CK</button>
-                  <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.name}: bỏ CK + quay về Về kho?`))return;await doUnCK(c.items,c.name);doUnship(c.items);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:10,cursor:"pointer"}}>↩ Về kho</button>
-                </div>
-              </div>)}
-            </>}
-            </>;
-          })()}
-        </div>}
+        {tab==="history"&&<CKTab orders={orders} ckView={ckView} setCkView={setCkView} doCK={doCK} doUnCK={doUnCK} doUnship={doUnship} busy={busy} t={t} bank={bank} msg={msg} setMCust={setMCust}/>}
         </>}
       </div>
     </div>
@@ -1275,6 +1191,90 @@ function App(){
     </div>}
     {!mob&&<button onClick={()=>setMAdd(true)} style={{position:"fixed",bottom:18,right:18,width:46,height:46,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:20,cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,.3)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
     <button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:mob?62:18,right:mob?8:70,width:32,height:32,borderRadius:8,border:"none",background:t.sf,color:t.dm,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.1)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid ${t.bd}`}}>↑</button>
+  </div>;
+}
+
+// ═══ CK TAB (extracted component) ═══
+function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,setMCust}){
+  const allSent=orders.filter(o=>o["TRẠNG THÁI"]==="Đã gửi");
+  const chuaCK=allSent.filter(o=>!(o._note||"").includes("💰CK"));
+  const daCK=allSent.filter(o=>(o._note||"").includes("💰CK"));
+  const groupBy=(list)=>{const m={};list.forEach(o=>{const n=String(o["Tên khách"]||"").trim();const fb=String(o["Link fb"]||"").trim();const key=n+(fb?"|"+normalizeFB(fb):"");if(!m[key])m[key]={items:[],rev:0,fb:fb,name:n};m[key].items.push(o);m[key].rev+=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);});return Object.entries(m).sort((a,b)=>b[1].rev-a[1].rev);};
+  const chuaCKgrp=groupBy(chuaCK);
+  const daCKgrp=groupBy(daCK);
+  const totalChuaCK=chuaCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
+  const totalDaCK=daCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
+
+  return <div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+      <h2 style={{fontSize:18,fontWeight:800,color:t.tx}}>💳 Chuyển khoản</h2>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+      <div onClick={()=>setCkView("chua")} style={{background:ckView==="chua"?"#FEF2F2":"transparent",borderRadius:10,padding:12,border:ckView==="chua"?"2px solid #DC2626":`1px solid ${t.bd}`,cursor:"pointer",textAlign:"center"}}>
+        <div style={{fontSize:9,color:"#DC2626",fontWeight:700}}>🔴 CHƯA CK</div>
+        <div style={{fontSize:20,fontWeight:800,color:"#DC2626"}}>{chuaCKgrp.length}</div>
+        <div style={{fontSize:10,color:"#DC2626"}}>khách · ¥{fmt(totalChuaCK)}</div>
+      </div>
+      <div onClick={()=>setCkView("da")} style={{background:ckView==="da"?"#D1FAE5":"transparent",borderRadius:10,padding:12,border:ckView==="da"?"2px solid #16A34A":`1px solid ${t.bd}`,cursor:"pointer",textAlign:"center"}}>
+        <div style={{fontSize:9,color:"#16A34A",fontWeight:700}}>🟢 ĐÃ CK</div>
+        <div style={{fontSize:20,fontWeight:800,color:"#16A34A"}}>{daCKgrp.length}</div>
+        <div style={{fontSize:10,color:"#16A34A"}}>khách · ¥{fmt(totalDaCK)}</div>
+      </div>
+    </div>
+
+    {ckView==="chua"&&<>
+      {chuaCKgrp.length===0&&<div style={{textAlign:"center",padding:20,color:t.dm}}>🎉 Tất cả đã CK!</div>}
+      {chuaCKgrp.map(([name,c],i)=>{
+        const isPhone=c.fb.startsWith("📱");
+        const sentDays=c.items.reduce((mx,o)=>{const m=(o._note||"").match(/📮SENT (\d{4}-\d{2}-\d{2})/);if(m){const d=Math.floor((Date.now()-new Date(m[1]))/864e5);return d>mx?d:mx;}return mx;},0);
+        return <div key={i} style={{background:"#FEF2F2",borderRadius:10,padding:12,marginBottom:8,borderLeft:`4px solid ${sentDays>7?"#DC2626":sentDays>3?"#F59E0B":"#DC2626"}`}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+          <Avatar name={name} fb={c.fb} size={28}/>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,color:t.tx,cursor:"pointer"}} onClick={()=>setMCust(c.name)}>{c.name}</div>
+            <div style={{fontSize:10,color:"#DC2626",fontWeight:600}}>{c.items.length} món · ¥{fmt(c.rev)}{sentDays>0?` · ${sentDays} ngày`:""}</div>
+          </div>
+          {sentDays>=7&&<span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#DC2626",color:"#fff",fontWeight:700}}>QUÁ HẠN</span>}
+        </div>
+        {c.fb&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,padding:"6px 8px",background:"#fff",borderRadius:6,border:"1px solid #FECACA"}}>
+          {isPhone?<>
+            <span style={{fontSize:12}}>📱</span>
+            <a href={`tel:${c.fb.replace("📱","")}`} style={{flex:1,color:"#7C3AED",fontSize:12,fontWeight:600,textDecoration:"none"}}>{c.fb.replace("📱","")}</a>
+          </>:<>
+            <span style={{fontSize:12}}>💬</span>
+            <a href={c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb} target="_blank" rel="noopener" style={{flex:1,color:"#7C3AED",fontSize:12,fontWeight:600,textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.fb.replace("https://","").replace("www.facebook.com/","fb/").replace("m.facebook.com/","fb/")}</a>
+          </>}
+        </div>}
+        <div style={{fontSize:10,color:t.dm,marginBottom:6,padding:"4px 0",borderTop:`1px solid #FECACA`}}>
+          {c.items.map((o,j)=><div key={j} style={{padding:"2px 0"}}>{o["Mã SP"]} {o["SIZE"]} {o["COLOR"]} x{o["Số lượng"]} · ¥{fmt(o["Giá sp"])}</div>)}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>doCK(c.items,c.name,c.rev)} disabled={busy} style={{flex:1,padding:8,borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💰 Đã CK</button>
+          <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;navigator.clipboard?.writeText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:8,borderRadius:8,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
+          <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.items.length} món của ${c.name} → Về kho?`))return;await doUnship(c.items);}} disabled={busy} style={{padding:8,borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:11,fontWeight:600,cursor:"pointer",opacity:busy?.5:1}} title="Hoàn tác → Về kho">↩</button>
+        </div>
+      </div>;})}
+    </>}
+
+    {ckView==="da"&&<>
+      {daCKgrp.length===0&&<div style={{textAlign:"center",padding:20,color:t.dm}}>Chưa ai CK</div>}
+      {daCKgrp.map(([name,c],i)=><div key={i} style={{background:"#D1FAE5",borderRadius:10,padding:10,marginBottom:6,borderLeft:"4px solid #16A34A"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+          <Avatar name={name} fb={c.fb} size={24}/>
+          <div style={{flex:1}}>
+            <span style={{fontWeight:600,color:t.tx}}>{c.name}</span>
+            <span style={{fontSize:10,color:"#16A34A",marginLeft:6}}>{c.items.length} món · ¥{fmt(c.rev)} ✅</span>
+          </div>
+        </div>
+        <div style={{fontSize:10,color:t.dm,marginBottom:4,paddingLeft:32}}>
+          {c.items.map((o,j)=><div key={j}>{o["Mã SP"]} {o["SIZE"]} {o["COLOR"]} x{o["Số lượng"]}</div>)}
+        </div>
+        <div style={{display:"flex",gap:4,paddingLeft:32}}>
+          <button onClick={()=>{if(!confirm(`Bỏ CK của ${c.name}? → Quay lại Chưa CK`))return;doUnCK(c.items,c.name);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid #F59E0B`,background:"#FEF3C7",color:"#92400E",fontSize:10,cursor:"pointer"}}>↩ Bỏ CK</button>
+          <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.name}: bỏ CK + quay về Về kho?`))return;await doUnCK(c.items,c.name);doUnship(c.items);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:10,cursor:"pointer"}}>↩ Về kho</button>
+        </div>
+      </div>)}
+    </>}
   </div>;
 }
 
