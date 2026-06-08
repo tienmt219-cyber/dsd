@@ -785,14 +785,23 @@ function App(){
     customerItems.forEach(o=>{ckOverrides.current.set(o._rowIndex,(o._note||"")+" 💰CK "+today);});
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"")+" 💰CK "+today}:o));
     msg(`💰 ${customerName} đã CK ¥${fmt(customerRev)}`);
-    // 2. Gọi API
+    // 2. Gọi API — debug: hiện r.marked + kiểm tra data
     setBusy(true);
     try{
-      const r=await POST({action:"batchMarkCK",items:customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}))});
+      const postItems=customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}));
+      console.log("🔵 batchMarkCK gửi:",JSON.stringify(postItems));
+      const r=await POST({action:"batchMarkCK",items:postItems});
+      console.log("🟢 batchMarkCK response:",JSON.stringify({marked:r.marked,error:r.error,hasData:!!r.data}));
       if(r.error){msg("❌ "+r.error);}
-      else if(r.marked===0){msg("⚠️ Server: 0 marked — kiểm tra lại");}
-      else if(r.data){sync(r.data);}
-    }catch(e){msg("❌ "+e.message);}
+      else{
+        msg(`💰 ${customerName} CK — server: ${r.marked||0}/${postItems.length} marked`);
+        if(r.data){
+          const check=r.data.orders?.filter(o=>rowSet.has(o._rowIndex));
+          console.log("🔍 Server data cho rows CK:",check?.map(o=>({row:o._rowIndex,note:o._note})));
+          sync(r.data);
+        }
+      }
+    }catch(e){msg("❌ "+e.message);console.error("batchMarkCK error:",e);}
     setBusy(false);
   };
 
