@@ -1071,7 +1071,7 @@ function App(){
                     const newSt=e.target.value;const name=String(o["Tên khách"]||"").trim();
                     safePost({action:"updateStatus",rowIndex:o._rowIndex,newStatus:newSt,verify:{tenKhach:name,maSP:String(o["Mã SP"]||"")}},`→ ${newSt}`);
                     // ★ Auto copy tin nhắn theo trạng thái
-                    const msgs={"Chờ hàng":`${name} ơi em xác nhận đơn nha!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\nGiá: ¥${fmt(o["Giá sp"])}\nHàng sẽ về trong 7-14 ngày. Về kho em báo ${name} CK nhé! 💜`,"Về kho":`Hàng c đặt về rồi ạ\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\n💰 ¥${fmt(o["Giá sp"])}\n\n${bank}`};
+                    const msgs={"Chờ hàng":`${name} ơi em xác nhận đơn nha!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\nGiá: ¥${fmt(o["Giá sp"])}\nHàng sẽ về trong 7-14 ngày. Về kho em báo ${name} CK nhé! 💜`,"Về kho":`${name} ơi hàng về rồi!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\n💰 ¥${fmt(o["Giá sp"])}\n\n${bank}\nCK xong báo t nhé.`};
                     if(msgs[newSt]){navigator.clipboard?.writeText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
                   }} disabled={busy} style={{padding:"2px 3px",borderRadius:4,border:`1px solid ${SC[o["TRẠNG THÁI"]]||t.bd}30`,background:`${SC[o["TRẠNG THÁI"]]||"#999"}10`,color:SC[o["TRẠNG THÁI"]]||t.dm,fontSize:9,fontWeight:600,cursor:"pointer"}}>{ST.map(s=><option key={s}>{s}</option>)}</select></td>
                   <td style={{padding:"5px 2px",display:"flex",gap:2}}>
@@ -1250,7 +1250,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
         </div>
         <div style={{display:"flex",gap:6}}>
           <button onClick={()=>doCK(c.items,c.name,c.rev)} disabled={busy} style={{flex:1,padding:8,borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💰 Đã CK</button>
-          <button onClick={()=>{const txt=`Hàng c đặt về rồi ạ\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}`;navigator.clipboard?.writeText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:8,borderRadius:8,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
+          <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;navigator.clipboard?.writeText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:8,borderRadius:8,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
           <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.items.length} món của ${c.name} → Về kho?`))return;await doUnship(c.items);}} disabled={busy} style={{padding:8,borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:11,fontWeight:600,cursor:"pointer",opacity:busy?.5:1}} title="Hoàn tác → Về kho">↩</button>
         </div>
       </div>;})}
@@ -1348,7 +1348,7 @@ function ToolsTab({catalog,active,orders,stock,shipped,stats,bank,t,msg,safePost
     {name:"Chào khách mới",text:`Chào ${tplName||"chị"}! 🌸\n\nBên em có hàng từ GZ về Nhật, ship toàn quốc.\nChị xem hàng trên tường em nhé!\n\nĐặt hàng: inbox mã SP + size + màu\n💜 PayPay: mam264`},
     {name:"Hàng đang ship",text:`Chào ${tplName||"chị"}! 🌸\n\nHàng của ${tplName||"chị"} đang ship từ GZ rồi ạ!\nDự kiến 7-10 ngày nữa về kho.\nVề là em báo ngay! 📦`},
     {name:"Xác nhận đơn",text:`Chào ${tplName||"chị"}! 🌸\n\nEm xác nhận đơn:\n[SP + Size + Màu]\n\nHàng sẽ về trong 7-14 ngày.\nVề kho em báo chị CK nhé! 💜`},
-    {name:"Nhắc CK",text:`Hàng c đặt về rồi ạ\n\n${tplName||"Chị"} CK giúp em để em gửi hàng nhé.\n\n${bank}`},
+    {name:"Nhắc CK",text:`Chào ${tplName||"chị"}! 🌸\n\nHàng của ${tplName||"chị"} đã về rồi ạ!\n${tplName||"Chị"} CK giúp em để em gửi hàng nhé.\n\n${bank}\n\nCK xong báo em! 📦`},
   ];
 
   // ★ BÁO CÁO
