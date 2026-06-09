@@ -109,9 +109,11 @@ async function GET(){
   }
 }
 async function POST(b){
-  const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
-  try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);return r.json();}
-  catch(e){clearTimeout(t);throw new Error("Kết nối chậm — thử lại");}
+  for(let retry=0;retry<3;retry++){
+    const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
+    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);return r.json();}
+    catch(e){clearTimeout(t);if(retry<2){await new Promise(r=>setTimeout(r,2000));continue;}throw new Error("Kết nối chậm — thử lại");}
+  }
 }
 
 function Modal({open,onClose,title,children,t}){
@@ -783,45 +785,73 @@ function App(){
   const doCK=async(customerItems,customerName,customerRev)=>{
     const rowSet=new Set(customerItems.map(o=>o._rowIndex));
     const today=new Date().toISOString().slice(0,10);
-    // 1. Lưu override + localStorage + optimistic update
+    // 1. Optimistic update + localStorage backup
     customerItems.forEach(o=>{ckOverrides.current.set(o._rowIndex,(o._note||"")+" 💰CK "+today);});
     saveCkOverrides();
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"")+" 💰CK "+today}:o));
-    msg(`💰 ${customerName} đã CK ¥${fmt(customerRev)}`);
-    // 2. Gọi API — debug: hiện r.marked + kiểm tra data
+    msg(`💰 ${customerName} đang lưu CK...`);
+    // 2. Gọi API + verify
     setBusy(true);
     try{
       const postItems=customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}));
-      console.log("🔵 batchMarkCK gửi:",JSON.stringify(postItems));
       const r=await POST({action:"batchMarkCK",items:postItems});
-      console.log("🟢 batchMarkCK response:",JSON.stringify({marked:r.marked,error:r.error,hasData:!!r.data}));
-      if(r.error){msg("❌ "+r.error);}
-      else{
-        msg(`💰 ${customerName} CK — server: ${r.marked||0}/${postItems.length} marked`);
-        if(r.data){
-          const check=r.data.orders?.filter(o=>rowSet.has(o._rowIndex));
-          console.log("🔍 Server data cho rows CK:",check?.map(o=>({row:o._rowIndex,note:o._note})));
-          sync(r.data);
-        }
+      if(r.error){msg("❌ CK lỗi: "+r.error);setBusy(false);return;}
+      // 3. Verify: đọc lại từ server, check đã lưu chưa
+      let verified=false;
+      for(let attempt=0;attempt<3;attempt++){
+        await new Promise(res=>setTimeout(res,2000));
+        try{
+          const fresh=await GET();
+          if(fresh.success&&fresh.orders){
+            const ckRows=fresh.orders.filter(o=>rowSet.has(o._rowIndex));
+            const allMarked=ckRows.every(o=>(o._note||"").includes("💰CK"));
+            if(allMarked){
+              verified=true;
+              customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
+              saveCkOverrides();
+              sync(fresh);
+              msg(`✅ ${customerName} CK ¥${fmt(customerRev)} — đã lưu!`);
+              break;
+            }
+          }
+        }catch(e){}
+        if(attempt<2)msg(`⏳ Đang verify CK... (${attempt+2}/3)`);
       }
-    }catch(e){msg("❌ "+e.message);console.error("batchMarkCK error:",e);}
+      if(!verified){
+        msg(`⚠️ ${customerName} CK — server chậm, đang giữ tạm. Sẽ tự đồng bộ.`);
+      }
+    }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
 
   const doUnCK=async(customerItems,customerName)=>{
     const rowSet=new Set(customerItems.map(o=>o._rowIndex));
-    // 1. Xoá override + localStorage + optimistic
+    // 1. Optimistic update
     customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
     saveCkOverrides();
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"").replace(/\s*💰CK\s*\d{4}-\d{2}-\d{2}/,"")}:o));
-    msg(`↩ ${customerName}: bỏ CK`);
-    // 2. Gọi API
+    msg(`↩ ${customerName}: đang bỏ CK...`);
+    // 2. Gọi API + verify
     setBusy(true);
     try{
       const r=await POST({action:"batchUnmarkCK",items:customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}))});
-      if(r.error){msg("❌ "+r.error);}
-      else if(r.unmarked===0){msg("⚠️ Không bỏ CK được");}
-      else if(r.data){sync(r.data);}
+      if(r.error){msg("❌ "+r.error);setBusy(false);return;}
+      if(r.unmarked===0){msg("⚠️ Không bỏ CK được");setBusy(false);return;}
+      // Verify
+      for(let attempt=0;attempt<3;attempt++){
+        await new Promise(res=>setTimeout(res,2000));
+        try{
+          const fresh=await GET();
+          if(fresh.success&&fresh.orders){
+            const rows=fresh.orders.filter(o=>rowSet.has(o._rowIndex));
+            if(rows.every(o=>!(o._note||"").includes("💰CK"))){
+              sync(fresh);
+              msg(`✅ ${customerName}: đã bỏ CK`);
+              break;
+            }
+          }
+        }catch(e){}
+      }
     }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
