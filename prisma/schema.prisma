@@ -166,3 +166,73 @@ model Setting {
   key   String @unique
   value String
 }
+
+// ─── Dream Team Models ───────────────────────────────────────
+
+model DtOrder {
+  id        String   @id @default(cuid())
+  rowIndex  Int      @unique
+  tenKhach  String   // customer name
+  tenSp     String   // product name
+  maSP      String   // product code
+  size      String   @default("")
+  color     String   @default("")
+  soLuong   Int      @default(1)
+  giaSp     Float    // price in JPY
+  linkFb    String   @default("")
+  trangThai String   @default("CHƯA ĐẶT") // status
+  ngayOd    DateTime @default(now()) // order date
+  note      String?  // includes 💰CK marks
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DtCatalog {
+  id     String  @id @default(cuid())
+  maSP   String  @unique
+  tenSP  String
+  giaBan Float   // selling price JPY
+  giaMua Float?  // cost price
+  link   String? // product link
+  image  String?
+}
+
+model DtAddress {
+  id     String  @id @default(cuid())
+  name   String
+  fb     String  // Facebook link
+  postal String  @default("")
+  pref   String  @default("")
+  city   String  @default("")
+  street String  @default("")
+  phone  String  @default("")
+
+  @@unique([name, fb])
+}
+
+model DtStock {
+  id      String  @id @default(cuid())
+  ma      String  // product code
+  ten     String  // product name
+  size    String  @default("")
+  color   String  @default("")
+  soLuong Int     @default(0)
+  note    String?
+}
+
+model DtEmsBatch {
+  id        String   @id @default(cuid())
+  emsCode   String
+  createdAt DateTime @default(now())
+  items     String   // JSON string
+}
+
+model DtSurplus {
+  id   String  @id @default(cuid())
+  ma   String  // product code
+  ten  String  // product name
+  sz   String  @default("")
+  cl   String  @default("")
+  sl   Int     @default(0)
+  note String?
+}
