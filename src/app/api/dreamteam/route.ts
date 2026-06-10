@@ -46,11 +46,48 @@ async function getFullData() {
 
   return {
     success: true,
-    orders,
-    stock,
-    catalog,
+    orders: orders.map((o) => ({
+      _rowIndex: o.rowIndex,
+      "Tên khách": o.tenKhach,
+      "Tên Sp": o.tenSp,
+      "Mã SP": o.maSP,
+      "SIZE": o.size,
+      "COLOR": o.color,
+      "Số lượng": o.soLuong,
+      "Giá sp": o.giaSp,
+      "Link fb": o.linkFb,
+      "TRẠNG THÁI": o.trangThai,
+      "NGÀY OD": o.ngayOd.toISOString().slice(0, 10),
+      "_note": o.note,
+    })),
+    stock: stock.map((s) => ({
+      id: s.id,
+      "Mã SP": s.ma,
+      "Size": s.size,
+      "Color": s.color,
+      "Số lượng nhập": s.soLuong,
+      "Số lượng": s.soLuong,
+      "Ngày nhập": "",
+      note: s.note,
+    })),
+    catalog: catalog.map((c) => ({
+      id: c.id,
+      "Mã SP": c.maSP,
+      "Tên SP": c.tenSP,
+      "Giá bán": c.giaBan,
+      "Giá nhập": c.giaMua,
+      link: c.link,
+      image: c.image,
+    })),
     addresses: buildAddressMap(addresses),
-    surplus,
+    surplus: surplus.map((s) => ({
+      id: s.id,
+      "Mã SP": s.ma,
+      "Size": s.sz,
+      "Color": s.cl,
+      "SL dư": s.sl,
+      "Trạng thái": s.note ?? "",
+    })),
     emsHistory: emsBatches.map((b) => ({
       id: b.id,
       emsCode: b.emsCode,
@@ -92,20 +129,21 @@ export async function POST(request: NextRequest) {
     switch (action) {
       // ── Orders ──────────────────────────────────────────
       case "addOrder": {
+        const o = body.order ?? body;
         const ri = await nextRowIndex();
         await prisma.dtOrder.create({
           data: {
             rowIndex: ri,
-            tenKhach: body.tenKhach ?? "",
-            tenSp: body.tenSp ?? "",
-            maSP: body.maSP ?? "",
-            size: body.size ?? "",
-            color: body.color ?? "",
-            soLuong: Number(body.soLuong) || 1,
-            giaSp: Number(body.giaSp) || 0,
-            linkFb: body.linkFb ?? "",
+            tenKhach: String(o.tenKhach ?? ""),
+            tenSp: String(o.tenSp ?? ""),
+            maSP: String(o.maSP ?? ""),
+            size: String(o.size ?? ""),
+            color: String(o.color ?? ""),
+            soLuong: Number(o.soLuong) || 1,
+            giaSp: Number(o.giaSp) || 0,
+            linkFb: String(o.linkFb ?? ""),
             trangThai: "CHƯA ĐẶT",
-            ngayOd: body.ngayOd ? new Date(body.ngayOd) : new Date(),
+            ngayOd: o.ngayOd ? new Date(o.ngayOd) : new Date(),
           },
         });
         break;
@@ -135,32 +173,31 @@ export async function POST(request: NextRequest) {
       }
 
       case "editOrder": {
-        const { rowIndex, ...fields } = body;
+        const f = body.fields ?? body;
         const updateData: Record<string, unknown> = {};
-        if (fields.tenKhach !== undefined) updateData.tenKhach = fields.tenKhach;
-        if (fields.tenSp !== undefined) updateData.tenSp = fields.tenSp;
-        if (fields.maSP !== undefined) updateData.maSP = fields.maSP;
-        if (fields.size !== undefined) updateData.size = fields.size;
-        if (fields.color !== undefined) updateData.color = fields.color;
-        if (fields.soLuong !== undefined) updateData.soLuong = Number(fields.soLuong);
-        if (fields.giaSp !== undefined) updateData.giaSp = Number(fields.giaSp);
-        if (fields.linkFb !== undefined) updateData.linkFb = fields.linkFb;
-        if (fields.note !== undefined) updateData.note = fields.note;
-        if (fields.ngayOd !== undefined) updateData.ngayOd = new Date(fields.ngayOd);
-        // remove action from updateData
-        delete updateData.action;
-        await prisma.dtOrder.update({ where: { rowIndex: Number(rowIndex) }, data: updateData });
+        if (f.tenKhach !== undefined) updateData.tenKhach = f.tenKhach;
+        if (f.tenSp !== undefined) updateData.tenSp = f.tenSp;
+        if (f.maSP !== undefined) updateData.maSP = f.maSP;
+        if (f.size !== undefined) updateData.size = f.size;
+        if (f.color !== undefined) updateData.color = f.color;
+        if (f.soLuong !== undefined) updateData.soLuong = Number(f.soLuong);
+        if (f.giaSp !== undefined) updateData.giaSp = Number(f.giaSp);
+        if (f.linkFb !== undefined) updateData.linkFb = f.linkFb;
+        if (f.note !== undefined) updateData.note = f.note;
+        if (f.ngayOd !== undefined) updateData.ngayOd = new Date(f.ngayOd);
+        await prisma.dtOrder.update({ where: { rowIndex: Number(body.rowIndex) }, data: updateData });
         break;
       }
 
       case "updateStatus": {
         await prisma.dtOrder.update({
           where: { rowIndex: Number(body.rowIndex) },
-          data: { trangThai: body.status },
+          data: { trangThai: body.newStatus ?? body.status },
         });
         break;
       }
 
+      case "softDelete":
       case "deleteOrder": {
         await prisma.dtOrder.update({
           where: { rowIndex: Number(body.rowIndex) },
@@ -170,13 +207,16 @@ export async function POST(request: NextRequest) {
       }
 
       case "batchMarkCK": {
-        const rows: number[] = (body.rowIndexes ?? []).map(Number);
+        const items: Array<Record<string, unknown>> = body.items ?? [];
+        const rows: number[] = items.length > 0
+          ? items.map((i) => Number(i.rowIndex))
+          : (body.rowIndexes ?? []).map(Number);
         const stamp = `💰CK ${todayStr()}`;
         for (const ri of rows) {
           const order = await prisma.dtOrder.findUnique({ where: { rowIndex: ri } });
           if (!order) continue;
           const existing = order.note ?? "";
-          if (existing.includes("💰CK")) continue; // already marked
+          if (existing.includes("💰CK")) continue;
           const newNote = existing ? `${existing} ${stamp}` : stamp;
           await prisma.dtOrder.update({ where: { rowIndex: ri }, data: { note: newNote } });
         }
@@ -184,7 +224,10 @@ export async function POST(request: NextRequest) {
       }
 
       case "batchUnmarkCK": {
-        const rows: number[] = (body.rowIndexes ?? []).map(Number);
+        const items: Array<Record<string, unknown>> = body.items ?? [];
+        const rows: number[] = items.length > 0
+          ? items.map((i) => Number(i.rowIndex))
+          : (body.rowIndexes ?? []).map(Number);
         for (const ri of rows) {
           const order = await prisma.dtOrder.findUnique({ where: { rowIndex: ri } });
           if (!order) continue;
@@ -195,7 +238,10 @@ export async function POST(request: NextRequest) {
       }
 
       case "shipItems": {
-        const rows: number[] = (body.rowIndexes ?? []).map(Number);
+        const items: Array<Record<string, unknown>> = body.items ?? [];
+        const rows: number[] = items.length > 0
+          ? items.map((i) => Number(i.rowIndex))
+          : (body.rowIndexes ?? []).map(Number);
         const stamp = `📮SENT ${todayStr()}`;
         for (const ri of rows) {
           const order = await prisma.dtOrder.findUnique({ where: { rowIndex: ri } });
@@ -212,24 +258,16 @@ export async function POST(request: NextRequest) {
 
       // ── Address ─────────────────────────────────────────
       case "saveAddress": {
+        const addr = body.address ?? body;
+        const postal = addr.postal ?? "";
+        const pref = addr.pref ?? "";
+        const city = addr.city ?? "";
+        const street = addr.street ?? "";
+        const phone = addr.phone ?? "";
         await prisma.dtAddress.upsert({
           where: { name_fb: { name: body.name, fb: body.fb } },
-          create: {
-            name: body.name,
-            fb: body.fb,
-            postal: body.postal ?? "",
-            pref: body.pref ?? "",
-            city: body.city ?? "",
-            street: body.street ?? "",
-            phone: body.phone ?? "",
-          },
-          update: {
-            postal: body.postal ?? "",
-            pref: body.pref ?? "",
-            city: body.city ?? "",
-            street: body.street ?? "",
-            phone: body.phone ?? "",
-          },
+          create: { name: body.name, fb: body.fb, postal, pref, city, street, phone },
+          update: { postal, pref, city, street, phone },
         });
         break;
       }
@@ -267,14 +305,15 @@ export async function POST(request: NextRequest) {
 
       // ── Stock ───────────────────────────────────────────
       case "addStock": {
+        const s = body.item ?? body;
         await prisma.dtStock.create({
           data: {
-            ma: body.ma ?? "",
-            ten: body.ten ?? "",
-            size: body.size ?? "",
-            color: body.color ?? "",
-            soLuong: Number(body.soLuong) || 0,
-            note: body.note ?? null,
+            ma: String(s.maSP ?? s.ma ?? ""),
+            ten: String(s.ten ?? ""),
+            size: String(s.size ?? ""),
+            color: String(s.color ?? ""),
+            soLuong: Number(s.soLuong) || 0,
+            note: s.note ?? null,
           },
         });
         break;
@@ -306,6 +345,113 @@ export async function POST(request: NextRequest) {
           },
         });
         break;
+      }
+
+      case "bulkUpdateStatus": {
+        const items: Array<Record<string, unknown>> = body.items ?? [];
+        for (const item of items) {
+          await prisma.dtOrder.update({
+            where: { rowIndex: Number(item.rowIndex) },
+            data: { trangThai: String(item.newStatus ?? item.status ?? "") },
+          });
+        }
+        break;
+      }
+
+      case "addSurplus": {
+        await prisma.dtSurplus.create({
+          data: {
+            ma: String(body.maSP ?? ""),
+            ten: "",
+            sz: String(body.size ?? ""),
+            cl: String(body.color ?? ""),
+            sl: Number(body.qty) || 0,
+            note: body.note ?? null,
+          },
+        });
+        break;
+      }
+
+      case "shipEMSWithStock": {
+        const ems = body.ems ?? body;
+        const emsItems: Array<Record<string, unknown>> = ems.items ?? [];
+        await prisma.dtEmsBatch.create({
+          data: {
+            emsCode: String(ems.emsCode ?? ""),
+            items: JSON.stringify(emsItems),
+          },
+        });
+        for (const item of emsItems) {
+          const ma = String(item.ma ?? item.maSP ?? "");
+          const size = String(item.size ?? item.sz ?? "");
+          const color = String(item.color ?? item.cl ?? "");
+          const qty = Number(item.qty ?? item.soLuong ?? 0);
+          if (ma && qty > 0) {
+            await prisma.dtStock.create({
+              data: { ma, ten: String(item.ten ?? ""), size, color, soLuong: qty },
+            });
+          }
+        }
+        break;
+      }
+
+      case "editEMSHistory": {
+        const ems = body.ems ?? body;
+        const batches = await prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } });
+        const idx = Number(body.rowIndex ?? 0);
+        if (idx >= 0 && idx < batches.length) {
+          await prisma.dtEmsBatch.update({
+            where: { id: batches[idx].id },
+            data: {
+              emsCode: String(ems.emsCode ?? ""),
+              items: JSON.stringify(ems.items ?? []),
+            },
+          });
+        }
+        break;
+      }
+
+      case "deleteEMSHistory": {
+        const batches = await prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } });
+        const idx = Number(body.rowIndex ?? 0);
+        if (idx >= 0 && idx < batches.length) {
+          await prisma.dtEmsBatch.delete({ where: { id: batches[idx].id } });
+        }
+        break;
+      }
+
+      case "addProduct": {
+        const p = body.product ?? body;
+        await prisma.dtCatalog.create({
+          data: {
+            maSP: String(p.ma ?? p.maSP ?? ""),
+            tenSP: String(p.ten ?? p.tenSP ?? ""),
+            giaBan: Number(p.gia ?? p.giaBan ?? 0),
+            giaMua: p.giaMua != null ? Number(p.giaMua) : null,
+            link: p.link ?? null,
+            image: p.image ?? null,
+          },
+        });
+        break;
+      }
+
+      case "updateProduct": {
+        const p = body.product ?? body;
+        const maSP = String(p.ma ?? p.maSP ?? "");
+        const updateData: Record<string, unknown> = {};
+        if (p.ten !== undefined || p.tenSP !== undefined) updateData.tenSP = String(p.ten ?? p.tenSP);
+        if (p.gia !== undefined || p.giaBan !== undefined) updateData.giaBan = Number(p.gia ?? p.giaBan);
+        if (p.giaMua !== undefined) updateData.giaMua = p.giaMua != null ? Number(p.giaMua) : null;
+        if (p.link !== undefined) updateData.link = p.link;
+        if (p.image !== undefined) updateData.image = p.image;
+        await prisma.dtCatalog.update({ where: { maSP }, data: updateData });
+        break;
+      }
+
+      case "uploadImage":
+      case "aiChat":
+      case "parseOrderAI": {
+        return NextResponse.json({ success: false, error: `Action "${action}" requires Google Apps Script (not available in local mode)` }, { status: 501 });
       }
 
       default:

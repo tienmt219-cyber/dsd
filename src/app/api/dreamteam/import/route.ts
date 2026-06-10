@@ -26,17 +26,17 @@ export async function POST(request: NextRequest) {
         await prisma.dtOrder.create({
           data: {
             rowIndex,
-            tenKhach: o["Tên khách"] ?? "",
-            tenSp: o["Tên Sp"] ?? "",
-            maSP: o["Mã SP"] ?? "",
-            size: o["SIZE"] ?? "",
-            color: o["COLOR"] ?? "",
+            tenKhach: String(o["Tên khách"] ?? ""),
+            tenSp: String(o["Tên Sp"] ?? ""),
+            maSP: String(o["Mã SP"] ?? ""),
+            size: String(o["SIZE"] ?? ""),
+            color: String(o["COLOR"] ?? ""),
             soLuong: Number(o["Số lượng"]) || 1,
             giaSp: Number(o["Giá sp"]) || 0,
-            linkFb: o["Link fb"] ?? "",
-            trangThai: o["TRẠNG THÁI"] ?? "CHƯA ĐẶT",
+            linkFb: String(o["Link fb"] ?? ""),
+            trangThai: String(o["TRẠNG THÁI"] ?? "CHƯA ĐẶT"),
             ngayOd,
-            note: o["_note"] ?? null,
+            note: o["_note"] != null ? String(o["_note"]) : null,
           },
         });
       }
@@ -48,10 +48,10 @@ export async function POST(request: NextRequest) {
       for (const s of stock) {
         await prisma.dtStock.create({
           data: {
-            ma: s.ma ?? s["Mã SP"] ?? "",
-            ten: s.ten ?? s["Tên SP"] ?? "",
-            size: s.size ?? s["SIZE"] ?? "",
-            color: s.color ?? s["COLOR"] ?? "",
+            ma: String(s.ma ?? s["Mã SP"] ?? ""),
+            ten: String(s.ten ?? s["Tên SP"] ?? ""),
+            size: String(s.size ?? s["SIZE"] ?? ""),
+            color: String(s.color ?? s["COLOR"] ?? ""),
             soLuong: Number(s.soLuong ?? s["Số lượng"]) || 0,
             note: s.note ?? null,
           },
@@ -63,12 +63,12 @@ export async function POST(request: NextRequest) {
     if (catalog.length > 0) {
       await prisma.dtCatalog.deleteMany();
       for (const c of catalog) {
-        const maSP = c.maSP ?? c["Mã SP"] ?? "";
+        const maSP = String(c.maSP ?? c["Mã SP"] ?? "");
         if (!maSP) continue;
         await prisma.dtCatalog.create({
           data: {
             maSP,
-            tenSP: c.tenSP ?? c["Tên SP"] ?? "",
+            tenSP: String(c.tenSP ?? c["Tên SP"] ?? ""),
             giaBan: Number(c.giaBan ?? c["Giá bán"]) || 0,
             giaMua: c.giaMua != null || c["Giá mua"] != null ? Number(c.giaMua ?? c["Giá mua"]) : null,
             link: c.link ?? null,
@@ -117,10 +117,10 @@ export async function POST(request: NextRequest) {
       for (const s of surplus) {
         await prisma.dtSurplus.create({
           data: {
-            ma: s.ma ?? "",
-            ten: s.ten ?? "",
-            sz: s.sz ?? "",
-            cl: s.cl ?? "",
+            ma: String(s.ma ?? ""),
+            ten: String(s.ten ?? ""),
+            sz: String(s.sz ?? ""),
+            cl: String(s.cl ?? ""),
             sl: Number(s.sl) || 0,
             note: s.note ?? null,
           },

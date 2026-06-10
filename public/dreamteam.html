@@ -18,7 +18,7 @@
 <script type="text/babel">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const API = "https://script.google.com/macros/s/AKfycbzF-WDvY4PrMZp-PYPzUCqML1YmiImo9dS7-IzE0y8HNBZh-gDlXkJKA7f1xK2WTzLX/exec";
+const API = "/api/dreamteam";
 const PW = "dreamteam2026";
 const BANK_DEFAULT = "🇻🇳 STK Việt Nam:\nNgân hàng: Techcombank\nSTK: 8109030991196\nTên: TRINH THI PHUONG\n\n💜 PayPay: 09030991196";
 const ST = ["CHƯA ĐẶT","Chờ hàng","Đang ship","Về kho","Đã gửi"];
@@ -111,7 +111,7 @@ async function GET(){
 async function POST(b){
   for(let retry=0;retry<3;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
-    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);return r.json();}
+    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);return r.json();}
     catch(e){clearTimeout(t);if(retry<2){await new Promise(r=>setTimeout(r,2000));continue;}throw new Error("Kết nối chậm — thử lại");}
   }
 }
@@ -2556,7 +2556,7 @@ function AIChatTab({t,msg}){
       const historyForAPI=chat.messages.slice(0,-1).map(m=>({role:m.role==="user"?"user":"ai",text:m.text}));
       const body={action:"aiChat",message:userMsg,aiModel,history:historyForAPI};
       if(userImages.length>0)body.images=userImages;
-      const res=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(body)});
+      const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
       const aiEntry={role:"ai",text:data.success?data.reply:"❌ "+(data.error||"Lỗi")};
       const updated=curConvos.map(c=>c.id===curId?{...c,messages:[...c.messages,aiEntry],updatedAt:new Date().toISOString()}:c);
@@ -2698,7 +2698,7 @@ function AITab({t,msg,catalog,onDone}){
     setLoading(true);setError("");setResult(null);setSelected({});
     try{
       const body={action:"parseOrderAI",inputType:mode,input:mode==="image"?images.map(img=>img.data):textInput,contextSP:contextSP.trim().replace(/^#/,"").toUpperCase(),aiModel};
-      const res=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(body)});
+      const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
       const data=await res.json();
       if(!data.success){setError(data.error||"Lỗi");}
       else if(!data.orders||data.orders.length===0){setError("Không tìm thấy đơn"+(data.note?": "+data.note:""));}
@@ -2729,7 +2729,7 @@ function AITab({t,msg,catalog,onDone}){
       const soLuong=parseInt(extra.so_luong!==undefined?extra.so_luong:ord.so_luong)||1;
       try{
         const cat=catalog.find(c=>String(c["Mã SP"]||"").trim().toUpperCase()===String(maSP||"").trim().toUpperCase());
-        const res=await fetch(API,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"addOrder",order:{tenKhach,tenSp:cat?cat["Tên SP"]:"",maSP,size,color,soLuong,giaSp:cat?Number(cat["Giá bán"])||0:0,linkFb:extra.link_fb||ord.link_fb||""}})});
+        const res=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"addOrder",order:{tenKhach,tenSp:cat?cat["Tên SP"]:"",maSP,size,color,soLuong,giaSp:cat?Number(cat["Giá bán"])||0:0,linkFb:extra.link_fb||ord.link_fb||""}})});
         const data=await res.json();
         if(data.success)ok++;else fail++;
       }catch{fail++;}
