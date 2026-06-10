@@ -922,7 +922,7 @@ function App(){
     {busy&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.2)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:t.sf,padding:"16px 28px",borderRadius:14,fontSize:14,fontWeight:600,color:t.tx,boxShadow:"0 8px 30px rgba(0,0,0,.15)"}}>⏳ Đang xử lý...</div></div>}
     {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:t.sf,padding:"10px 20px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:300,boxShadow:"0 8px 30px rgba(0,0,0,.15)",border:`1px solid ${t.bd}`,color:t.tx}}>{toast}</div>}
     <Modal open={mAdd} onClose={()=>setMAdd(false)} title="✏️ Tạo đơn" t={t}><AddForm orders={active} catalog={catalog} addrs={addrs} surplusData={surplusData} safePost={safePost} onAdd={o=>{safePost({action:"addOrder",order:o},"Tạo đơn!");}} t={t}/></Modal>
-    <Modal open={!!mCust} onClose={()=>setMCust(null)} title={`👤 ${mCust||""}`} t={t}>{mCust&&<CustProfile name={mCust} orders={active} addrs={addrs} safePost={safePost} msg={msg} t={t}/>}</Modal>
+    <Modal open={!!mCust} onClose={()=>setMCust(null)} title={`👤 ${mCust?.name||""}`} t={t}>{mCust&&<CustProfile name={mCust.name} fb={mCust.fb} orders={active} addrs={addrs} safePost={safePost} msg={msg} t={t}/>}</Modal>
     <Modal open={!!mEdit} onClose={()=>setMEdit(null)} title="✏️ Sửa đơn" t={t}>{mEdit&&<EditForm order={mEdit} catalog={catalog} safePost={safePost} onDone={()=>setMEdit(null)} t={t} msg={msg}/>}</Modal>
 
     {!mob&&<div style={{width:170,background:t.sf,borderRight:`1px solid ${t.bd}`,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}}>
@@ -1029,7 +1029,7 @@ function App(){
             </div>
             <div style={{background:t.sf,borderRadius:12,border:`1px solid ${t.bd}`,padding:14}}>
               <div style={{fontSize:12,fontWeight:700,color:t.tx,marginBottom:8}}>👑 Top khách</div>
-              {stats.topCust.slice(0,5).map((c,i)=><div key={i} style={{fontSize:11,color:t.tx,marginBottom:3,cursor:"pointer"}} onClick={()=>setMCust(c.n)}>{i+1}. {c.n} <b style={{color:t.pk}}>¥{fmt(c.r)}</b></div>)}
+              {stats.topCust.slice(0,5).map((c,i)=><div key={i} style={{fontSize:11,color:t.tx,marginBottom:3,cursor:"pointer"}} onClick={()=>setMCust({name:c.n,fb:c.fb||""})}>{i+1}. {c.n} <b style={{color:t.pk}}>¥{fmt(c.r)}</b></div>)}
             </div>
             <div style={{background:t.sf,borderRadius:12,border:`1px solid ${t.bd}`,padding:14}}>
               <div style={{fontSize:12,fontWeight:700,color:t.tx,marginBottom:8}}>📍 Thông tin</div>
@@ -1263,7 +1263,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
           <Avatar name={name} fb={c.fb} size={28}/>
           <div style={{flex:1}}>
-            <div style={{fontWeight:700,color:t.tx,cursor:"pointer"}} onClick={()=>setMCust(c.name)}>{c.name}</div>
+            <div style={{fontWeight:700,color:t.tx,cursor:"pointer"}} onClick={()=>setMCust({name:c.name,fb:c.fb||""})}>{c.name}</div>
             <div style={{fontSize:10,color:"#DC2626",fontWeight:600}}>{c.items.length} món · ¥{fmt(c.rev)}{sentDays>0?` · ${sentDays} ngày`:""}</div>
           </div>
           {sentDays>=7&&<span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:"#DC2626",color:"#fff",fontWeight:700}}>QUÁ HẠN</span>}
@@ -1587,7 +1587,7 @@ function ShipCard({cust,ci,shipData,shipSel,setShipSel,copyNotify,doShip,cancelO
           <div style={{display:"flex",alignItems:"center",gap:6}}>
           <Avatar name={cust.name} fb={cust.fb} size={28}/>
           <div>
-          <span style={{fontSize:14,fontWeight:700,color:t.tx,cursor:"pointer"}} onClick={()=>setMCust(cust.name)}>{cust.name}</span>
+          <span style={{fontSize:14,fontWeight:700,color:t.tx,cursor:"pointer"}} onClick={()=>setMCust({name:cust.name,fb:cust.fb||""})}>{cust.name}</span>
           {!isPartial&&<span style={{fontSize:9,background:"#D1FAE5",color:"#065F46",padding:"1px 6px",borderRadius:4,marginLeft:6,fontWeight:600}}>ĐỦ</span>}
           <span style={{fontSize:10,color:"#0D9488",marginLeft:6}}>{cust.items.length} món</span>
           {cust.pending>0&&<span style={{fontSize:10,color:"#D97706",marginLeft:4}}>+{cust.pending} chưa về</span>}
@@ -2424,11 +2424,12 @@ async function autoFillPref(parsed){
   return parsed;
 }
 
-function CustProfile({name,orders,addrs,safePost,msg,t}){
-  const co=orders.filter(o=>String(o["Tên khách"]||"").trim()===name);
+function CustProfile({name,fb:fbProp,orders,addrs,safePost,msg,t}){
+  const fbNorm=normalizeFB(fbProp||"");
+  const co=orders.filter(o=>String(o["Tên khách"]||"").trim()===name&&normalizeFB(String(o["Link fb"]||""))===fbNorm);
   const rev=co.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
   const items=co.reduce((s,o)=>s+Number(o["Số lượng"]||0),0);
-  const fb=co.find(o=>o["Link fb"]&&String(o["Link fb"]).startsWith("http"))?.["Link fb"]||"";
+  const fb=fbProp||co.find(o=>o["Link fb"]&&String(o["Link fb"]).startsWith("http"))?.["Link fb"]||"";
   const tier=rev>=10000?"⭐ VIP":items>=3?"💎 Thân thiết":"👤 Thường";
   const saved=getAddr(addrs,name,fb)||{};
   const savedFull=[saved.postal,saved.pref,saved.city,saved.street].filter(Boolean).join(" ");
