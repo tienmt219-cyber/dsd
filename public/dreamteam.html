@@ -163,7 +163,7 @@ function EditForm({order,catalog,safePost,onDone,t,msg}){
       <div><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Tên SP</label><input value={f.tenSp} onChange={e=>setF({...f,tenSp:e.target.value})} style={inp}/></div>
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:6}}>
-      <div><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Size</label><select value={f.size} onChange={e=>setF({...f,size:e.target.value})} style={inp}>{SIZES.map(s=><option key={s}>{s}</option>)}</select></div>
+      <div><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Size</label><select value={f.size} onChange={e=>setF({...f,size:e.target.value})} style={inp}><option value="">(chọn)</option>{f.size&&!SIZES.includes(f.size)&&<option key={f.size} value={f.size}>{f.size}</option>}{SIZES.map(s=><option key={s}>{s}</option>)}</select></div>
       <div><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Màu</label><input value={f.color} onChange={e=>setF({...f,color:e.target.value})} style={inp}/></div>
       <div><label style={{fontSize:10,color:t.dm,fontWeight:600}}>SL</label><input value={f.soLuong} onChange={e=>setF({...f,soLuong:e.target.value})} type="number" min="1" style={inp}/></div>
       <div><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Giá ¥</label><input value={f.giaSp} onChange={e=>setF({...f,giaSp:e.target.value})} type="number" style={inp}/></div>
@@ -171,7 +171,7 @@ function EditForm({order,catalog,safePost,onDone,t,msg}){
     <div style={{display:"flex",flexWrap:"wrap",gap:3,marginBottom:8}}>
       {COLORS.map(c=><button key={c} onClick={()=>setF({...f,color:c})} style={{padding:"3px 7px",borderRadius:6,border:`1.5px solid ${f.color===c?t.ac:t.bd}`,background:f.color===c?t.ab:t.sf,color:f.color===c?t.ac:t.dm,fontSize:9,fontWeight:600,cursor:"pointer"}}>{c}</button>)}
     </div>
-    <div style={{marginBottom:10}}><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Link FB</label><input value={f.linkFb} onChange={e=>setF({...f,linkFb:cleanFB(e.target.value)})} style={inp}/></div>
+    <div style={{marginBottom:10}}><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Link FB</label><input value={f.linkFb} onChange={e=>setF({...f,linkFb:e.target.value})} onBlur={e=>setF({...f,linkFb:cleanFB(e.target.value)})} style={inp}/></div>
     <div style={{display:"flex",gap:8}}>
       <button onClick={onDone} style={{flex:1,padding:12,borderRadius:12,border:`1px solid ${t.bd}`,background:t.sf,color:t.dm,fontSize:14,fontWeight:700,cursor:"pointer"}}>Huỷ</button>
       <button onClick={doSave} style={{flex:2,padding:12,borderRadius:12,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>💾 Lưu thay đổi</button>
@@ -324,7 +324,7 @@ function AddForm({orders,catalog,addrs,surplusData,safePost,onAdd,t}){
     </div>
     <div style={{marginBottom:10}}><label style={{fontSize:11,color:t.dm,fontWeight:600,marginBottom:4,display:"block"}}>Link FB {!d.fb&&d.name&&<span style={{color:"#DC2626",fontWeight:700}}>⚠️ BẮT BUỘC để tránh lệch địa chỉ</span>}</label>
       <div style={{display:"flex",gap:4}}>
-        <input value={d.fb} onChange={e=>setD({...d,fb:cleanFB(e.target.value)})} placeholder="Paste link hoặc bấm 🔍" style={{...inp,flex:1,borderColor:!d.fb&&d.name?"#DC2626":t.bd}}/>
+        <input value={d.fb} onChange={e=>setD({...d,fb:e.target.value})} onBlur={e=>setD({...d,fb:cleanFB(e.target.value)})} placeholder="Paste link hoặc bấm 🔍" style={{...inp,flex:1,borderColor:!d.fb&&d.name?"#DC2626":t.bd}}/>
         <button onClick={async()=>{try{const t=await navigator.clipboard.readText();if(t.includes("facebook.com"))setD({...d,fb:cleanFB(t)});}catch{}}} title="Paste" style={{padding:"8px 10px",borderRadius:10,border:`1.5px solid ${t.bd}`,background:t.sf,cursor:"pointer",fontSize:13}}>📋</button>
         <button onClick={()=>{if(d.fb&&d.fb.includes("facebook.com"))window.open(d.fb,"_blank");else if(d.name)window.open("https://www.facebook.com/search/people/?q="+encodeURIComponent(d.name),"_blank");}} disabled={!d.name&&!d.fb} title={d.fb?"Mở FB":"Tìm FB"} style={{padding:"8px 10px",borderRadius:10,border:`1.5px solid ${t.bd}`,background:d.fb?t.ab:d.name?t.sf:t.bd,cursor:(d.name||d.fb)?"pointer":"not-allowed",fontSize:13}}>{d.fb?"🔗":"🔍"}</button>
       </div>
@@ -522,7 +522,7 @@ function exportBOSS(items, addrs) {
 
 // ═══ MAIN ═══
 function App(){
-  const [auth,setAuth]=useState(true);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
+  const [auth,setAuth]=useState(false);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
   const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt_dark",v?"1":"0")}catch(e){}};
   const [orders,setOrders]=useState([]);const [stock,setStock]=useState([]);const [catalog,setCatalog]=useState([]);const [addrs,setAddrs]=useState({});const [surplus,setSurplus]=useState([]);const [emsHistory,setEmsHistory]=useState([]);
   const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [toast,setToast]=useState(null);const [lastSync,setLastSync]=useState(null);
@@ -560,7 +560,7 @@ function App(){
       const [name,fb]=key.split("\u0001");
       const a=getAddr(addrs,name,fb)||{};
       const postal=(a.postal||"").replace(/[^0-9]/g,"");
-      if(!postal||postal.length!==7){status[name]={ok:false,msg:"❌ Thiếu 〒"};continue;}
+      if(!postal||postal.length!==7){status[key]={ok:false,msg:"❌ Thiếu 〒"};continue;}
       try{
         const r=await fetch("https://zipcloud.ibsnet.co.jp/api/search?zipcode="+postal);
         const j=await r.json();
@@ -590,14 +590,14 @@ function App(){
             const newAddrs={...addrs,[addrKey]:fixed};
             setAddrs(newAddrs);
             safePost({action:"saveAddress",name,fb:fb||"",address:fixed},"");
-            status[name]={ok:true,msg:`✅ Auto: ${z.address1} ${newCity} ${newStreet.slice(0,10)}...`,fixed:true};
+            status[key]={ok:true,msg:`✅ Auto: ${z.address1} ${newCity} ${newStreet.slice(0,10)}...`,fixed:true};
           }else if(mismatch){
-            status[name]={ok:false,msg:`⚠️ 〒→${z.address1} ≠ ${a.pref}`,suggest:z};
+            status[key]={ok:false,msg:`⚠️ 〒→${z.address1} ≠ ${a.pref}`,suggest:z};
           }else{
-            status[name]={ok:true,msg:"✅ OK"};
+            status[key]={ok:true,msg:"✅ OK"};
           }
-        }else{status[name]={ok:false,msg:"❌ 〒 không tồn tại"};}
-      }catch(e){status[name]={ok:false,msg:"⚠️ Lỗi check"};}
+        }else{status[key]={ok:false,msg:"❌ 〒 không tồn tại"};}
+      }catch(e){status[key]={ok:false,msg:"⚠️ Lỗi check"};}
     }
     setDraftAddrStatus(status);
     const fixed=Object.values(status).filter(s=>s.fixed).length;
@@ -668,14 +668,16 @@ function App(){
     const byC={};
     ready.forEach(o=>{
       const n=String(o["Tên khách"]||"").trim();if(!n)return;
-      if(!byC[n])byC[n]={name:n,fb:"",items:[]};
-      if(o["Link fb"]&&String(o["Link fb"]).startsWith("http")&&!byC[n].fb)byC[n].fb=o["Link fb"];
-      byC[n].items.push(o);
+      const key=n+"|"+normalizeFB(String(o["Link fb"]||""));
+      if(!byC[key])byC[key]={name:n,fb:"",items:[]};
+      if(o["Link fb"]&&String(o["Link fb"]).startsWith("http")&&!byC[key].fb)byC[key].fb=o["Link fb"];
+      byC[key].items.push(o);
     });
     // Thêm món chưa về cho context
     active.filter(o=>!["Về kho","Đã gửi"].includes(o["TRẠNG THÁI"])).forEach(o=>{
       const n=String(o["Tên khách"]||"").trim();
-      if(byC[n])byC[n].pending=(byC[n].pending||0)+1;
+      const key=n+"|"+normalizeFB(String(o["Link fb"]||""));
+      if(byC[key])byC[key].pending=(byC[key].pending||0)+1;
     });
     return Object.values(byC).sort((a,b)=>{
       const aFull=!a.pending;const bFull=!b.pending;
@@ -702,13 +704,13 @@ function App(){
       const cost=(nhap+SHIP_GZ+BOSS_PER_ITEM)*qty;
       return s+(Number(x["Giá sp"])||0)*qty-cost;
     },0);
-    const cust=[...new Set(allValid.map(x=>x["Tên khách"]))].length;
+    const cust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"")+"|"+String(x["Link fb"]||"")))].length;
     const overdue=allValid.filter(x=>{if(["Đã gửi","Về kho"].includes(x["TRẠNG THÁI"]))return false;const d=String(x["NGÀY OD"]||"").slice(0,10);return d&&daysAgo(d)>21;}).length;
     const byDate={};allValid.forEach(x=>{const d=String(x["NGÀY OD"]||"").slice(0,10);if(d)byDate[d]=(byDate[d]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
     const revChart=Object.keys(byDate).sort().slice(-7).map(d=>({l:d.slice(5),v:byDate[d]}));
     const spM={};allValid.forEach(x=>{const k=String(x["Mã SP"]);if(!spM[k])spM[k]={m:k,n:x["Tên Sp"],q:0};spM[k].q+=Number(x["Số lượng"]||0);});
     const topSP=Object.values(spM).sort((a,b)=>b.q-a.q).slice(0,5);
-    const cuM={};allValid.forEach(x=>{const k=x["Tên khách"];if(!cuM[k])cuM[k]={n:k,r:0};cuM[k].r+=(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
+    const cuM={};allValid.forEach(x=>{const k=String(x["Tên khách"]||"")+"|"+normalizeFB(String(x["Link fb"]||""));if(!cuM[k])cuM[k]={n:String(x["Tên khách"]||""),fb:String(x["Link fb"]||""),r:0};cuM[k].r+=(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
     const topCust=Object.values(cuM).sort((a,b)=>b.r-a.r).slice(0,5);
     const pendingDays=allValid.filter(x=>!["Đã gửi","Đã xoá"].includes(x["TRẠNG THÁI"])).map(x=>daysAgo(String(x["NGÀY OD"]||"").slice(0,10))).filter(d=>d>0);
     const avgDays=pendingDays.length?Math.round(pendingDays.reduce((a,b)=>a+b,0)/pendingDays.length):0;
@@ -747,9 +749,9 @@ function App(){
     });
     // ★ Sort by column
     const dir=sortDir==="asc"?1:-1;
-    if(sortBy==="date")list.sort((a,b)=>dir*(String(b["NGÀY OD"]||"").localeCompare(String(a["NGÀY OD"]||""))));
+    if(sortBy==="date")list.sort((a,b)=>dir*(String(a["NGÀY OD"]||"").localeCompare(String(b["NGÀY OD"]||""))));
     else if(sortBy==="name")list.sort((a,b)=>dir*String(a["Tên khách"]||"").localeCompare(String(b["Tên khách"]||"")));
-    else if(sortBy==="price")list.sort((a,b)=>dir*((Number(b["Giá sp"])||0)-(Number(a["Giá sp"])||0)));
+    else if(sortBy==="price")list.sort((a,b)=>dir*((Number(a["Giá sp"])||0)-(Number(b["Giá sp"])||0)));
     else if(sortBy==="status")list.sort((a,b)=>dir*(ST.indexOf(a["TRẠNG THÁI"])-ST.indexOf(b["TRẠNG THÁI"])));
     return list;
   },[active,filt,custFilter,search,df,dt,sortBy,sortDir]);
@@ -1229,7 +1231,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
   const allSent=orders.filter(o=>o["TRẠNG THÁI"]==="Đã gửi");
   const chuaCK=allSent.filter(o=>!(o._note||"").includes("💰CK"));
   const daCK=allSent.filter(o=>(o._note||"").includes("💰CK"));
-  const groupBy=(list)=>{const m={};list.forEach(o=>{const n=String(o["Tên khách"]||"").trim();const fb=String(o["Link fb"]||"").trim();const key=n+(fb?"|"+normalizeFB(fb):"");if(!m[key])m[key]={items:[],rev:0,fb:fb,name:n};m[key].items.push(o);m[key].rev+=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);});return Object.entries(m).sort((a,b)=>b[1].rev-a[1].rev);};
+  const groupBy=(list)=>{const m={};list.forEach(o=>{const n=String(o["Tên khách"]||"").trim();const fb=String(o["Link fb"]||"").trim();const key=n+"|"+normalizeFB(fb||"");if(!m[key])m[key]={items:[],rev:0,fb:fb,name:n};m[key].items.push(o);m[key].rev+=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);});return Object.entries(m).sort((a,b)=>b[1].rev-a[1].rev);};
   const chuaCKgrp=groupBy(chuaCK);
   const daCKgrp=groupBy(daCK);
   const totalChuaCK=chuaCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
@@ -1301,7 +1303,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
         </div>
         <div style={{display:"flex",gap:4,paddingLeft:32}}>
           <button onClick={()=>{if(!confirm(`Bỏ CK của ${c.name}? → Quay lại Chưa CK`))return;doUnCK(c.items,c.name);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid #F59E0B`,background:"#FEF3C7",color:"#92400E",fontSize:10,cursor:"pointer"}}>↩ Bỏ CK</button>
-          <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.name}: bỏ CK + quay về Về kho?`))return;await doUnCK(c.items,c.name);doUnship(c.items);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:10,cursor:"pointer"}}>↩ Về kho</button>
+          <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.name}: bỏ CK + quay về Về kho?`))return;await doUnCK(c.items,c.name);await doUnship(c.items);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:10,cursor:"pointer"}}>↩ Về kho</button>
         </div>
       </div>)}
     </>}
@@ -1757,7 +1759,7 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
   const [customQty,setCustomQty]=useState({});
 
   const copyList=(stage)=>{
-    const qtyKey=stage==="cd"?"chuaDat":"choHang";
+    const qtyKey=stage==="cd"?"chuaDat":stage==="ds"?"dangShip":"choHang";
     const list=gzData.filter(g=>g[qtyKey]>0);
     const text=list.map(g=>{
       const ri=gzData.indexOf(g);
@@ -1868,7 +1870,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   // Lookup ảnh từ catalog theo mã SP
   const getImg=(ma)=>{
     const c=catalog.find(x=>norm(x["Mã SP"])===norm(ma));
-    return c?String(c["Ảnh"]||"").trim():"";
+    return c?String(c["image"]||c["Ảnh"]||"").trim():"";
   };
 
   // Tất cả đơn "Chờ hàng" group theo SKU
@@ -1910,23 +1912,23 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   // Items đã chọn
   const selItems=choHang.filter(g=>sel.has(g.key));
   const allLines=[
-    ...selItems.map(g=>({sku:g.ma,size:g.size,color:g.color,qty:Number(qtyMap[g.key]!==undefined?qtyMap[g.key]:g.qty)})),
-    ...manual.filter(m=>m.sku).map(m=>({sku:m.sku,size:m.size,color:m.color,qty:Number(m.qty||1)}))
+    ...selItems.map(g=>({ma:g.ma,size:g.size,color:g.color,qty:Number(qtyMap[g.key]!==undefined?qtyMap[g.key]:g.qty)})),
+    ...manual.filter(m=>m.sku).map(m=>({ma:m.sku,size:m.size,color:m.color,qty:Number(m.qty||1)}))
   ];
   const totalQty=allLines.reduce((s,l)=>s+l.qty,0);
 
   const copyPacking=()=>{
-    const lines=allLines.map(l=>`${l.sku} | ${l.size} | ${l.color} | x${l.qty}`);
-    const txt=`📦 KIỆN EMS: ${emsCode||"_______________"}\n${"━".repeat(35)}\n\n${"STT".padEnd(4)}${"Mã SP".padEnd(10)}${"Size".padEnd(6)}${"Màu".padEnd(12)}${"SL"}\n${"─".repeat(35)}\n${allLines.map((l,i)=>`${String(i+1).padEnd(4)}${String(l.sku).padEnd(10)}${String(l.size).padEnd(6)}${String(l.color).padEnd(12)}${l.qty}`).join("\n")}\n${"─".repeat(35)}\nTổng: ${totalQty} SP · ${allLines.length} SKU\n${"━".repeat(35)}\n\n📅 ${new Date().toLocaleDateString("vi-VN")}\n🌸 Shop MAM`;
+    const lines=allLines.map(l=>`${l.ma} | ${l.size} | ${l.color} | x${l.qty}`);
+    const txt=`📦 KIỆN EMS: ${emsCode||"_______________"}\n${"━".repeat(35)}\n\n${"STT".padEnd(4)}${"Mã SP".padEnd(10)}${"Size".padEnd(6)}${"Màu".padEnd(12)}${"SL"}\n${"─".repeat(35)}\n${allLines.map((l,i)=>`${String(i+1).padEnd(4)}${String(l.ma).padEnd(10)}${String(l.size).padEnd(6)}${String(l.color).padEnd(12)}${l.qty}`).join("\n")}\n${"─".repeat(35)}\nTổng: ${totalQty} SP · ${allLines.length} SKU\n${"━".repeat(35)}\n\n📅 ${new Date().toLocaleDateString("vi-VN")}\n🌸 Shop MAM`;
     navigator.clipboard?.writeText(txt);
     msg("📋 Đã copy packing list");
   };
 
   const downloadPDF=()=>{
     const rows=allLines.map((l,i)=>{
-      const img=getImg(l.sku);
+      const img=getImg(l.ma);
       const imgHtml=img?`<img src="${img}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #eee" onerror="this.style.display='none'"/>`:`<div style="width:60px;height:60px;background:#f3f3f3;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999">No img</div>`;
-      return `<tr><td>${i+1}</td><td style="padding:4px">${imgHtml}</td><td><b>${l.sku}</b></td><td>${l.size}</td><td>${l.color}</td><td style="text-align:right"><b>${l.qty}</b></td></tr>`;
+      return `<tr><td>${i+1}</td><td style="padding:4px">${imgHtml}</td><td><b>${l.ma}</b></td><td>${l.size}</td><td>${l.color}</td><td style="text-align:right"><b>${l.qty}</b></td></tr>`;
     }).join("");
     const html=`<html><head><meta charset="utf-8"><title>EMS ${emsCode||""}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;padding:30px;font-size:13px}h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#666;margin-bottom:16px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#7C3AED;color:#fff;padding:8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}.total{font-size:16px;font-weight:bold;margin:12px 0;padding:10px;background:#F3EEFF;border-radius:8px}.ems{font-family:monospace;font-size:20px;font-weight:bold;letter-spacing:2px;padding:10px;border:2px solid #F59E0B;border-radius:8px;text-align:center;margin:12px 0;background:#FFFBEB}.footer{margin-top:20px;color:#999;font-size:10px;border-top:1px solid #eee;padding-top:8px}img{display:block}@media print{body{padding:15px}img{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><h1>📦 PACKING LIST</h1><h2>${new Date().toLocaleDateString("vi-VN")} · Shop MAM</h2><div class="ems">EMS: ${emsCode||"_______________"}</div><table><thead><tr><th>#</th><th>Ảnh</th><th>Mã SP</th><th>Size</th><th>Màu</th><th style="text-align:right">SL</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Tổng: ${totalQty} SP · ${allLines.length} SKU</div><div class="footer">Dream Team · Auto generated</div></body></html>`;
     const w=window.open("","_blank","width=700,height=900");
@@ -1972,13 +1974,14 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
     const map={};
     emsHistory.forEach((h,idx)=>{
       const code=h.emsCode;
-      let items=[];try{items=JSON.parse(h.items||"[]")}catch(e){}
+      let items=[];try{items=Array.isArray(h.items)?h.items:(typeof h.items==="string"?JSON.parse(h.items):[]);}catch(e){}
       if(!map[code])map[code]={emsCode:code,batches:[],totalSku:0,totalQty:0,latestDate:""};
       const totalQ=items.reduce((s,it)=>s+Number(it.qty||0),0);
-      map[code].batches.push({original:h,originalIdx:idx,items,date:h.date,skuCount:items.length,totalQty:totalQ,rowIndex:h._rowIndex});
+      const hDate=h.date||String(h.createdAt||"").slice(0,10);
+      map[code].batches.push({original:h,originalIdx:idx,items,date:hDate,skuCount:items.length,totalQty:totalQ,rowIndex:h._rowIndex!=null?h._rowIndex:(h.id!=null?h.id:idx)});
       map[code].totalSku+=items.length;
       map[code].totalQty+=totalQ;
-      if((h.date||"")>map[code].latestDate)map[code].latestDate=h.date||"";
+      if((hDate||"")>map[code].latestDate)map[code].latestDate=hDate||"";
     });
     return Object.values(map).sort((a,b)=>b.latestDate.localeCompare(a.latestDate));
   },[emsHistory]);
@@ -2009,8 +2012,8 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
 
   // ★ v3.1: Lưu edit lên backend (sync đa máy)
   const saveHistEdit=async()=>{
-    if(!editingHist||!editingHist.rowIndex)return;
-    const cleanItems=editingHist.items.filter(it=>it.sku).map(it=>({sku:it.sku,size:it.size||"",color:it.color||"",qty:Number(it.qty||0)}));
+    if(!editingHist||editingHist.rowIndex==null)return;
+    const cleanItems=editingHist.items.filter(it=>it.ma||it.sku).map(it=>({ma:it.ma||it.sku||"",size:it.size||"",color:it.color||"",qty:Number(it.qty||0)}));
     if(!cleanItems.length){msg("⚠️ Cần ít nhất 1 SP");return;}
     if(!editingHist.emsCode){msg("⚠️ Mã EMS không được rỗng");return;}
     await safePost({action:"editEMSHistory",rowIndex:editingHist.rowIndex,ems:{emsCode:editingHist.emsCode,items:cleanItems}},`✅ Đã cập nhật lịch sử EMS`);
@@ -2019,7 +2022,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
 
   // ★ v3.1: Xoá 1 đợt EMS trên backend
   const deleteHistBatch=async(rowIndex,emsCode)=>{
-    if(!rowIndex)return;
+    if(rowIndex==null)return;
     if(!confirm(`🗑 Xoá đợt ship này khỏi LỊCH SỬ EMS?\n(Mã: ${emsCode})\n\nLưu ý: chỉ xoá record lịch sử, KHÔNG hoàn tác trạng thái đơn / kho.`))return;
     await safePost({action:"deleteEMSHistory",rowIndex},`🗑 Đã xoá đợt ${emsCode}`);
   };
@@ -2043,7 +2046,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
         <div style={{display:"flex",gap:4,alignItems:"center",flex:"1 1 auto",justifyContent:"flex-end"}}>
           <input value={searchWait} onChange={e=>setSearchWait(e.target.value)} placeholder="🔍 Mã SP / size / màu" style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,fontSize:11,background:t.inp,color:t.tx,width:160,maxWidth:"50vw"}}/>
           {searchWait&&<button onClick={()=>setSearchWait("")} style={{padding:"3px 6px",borderRadius:4,border:"none",background:"#FEE2E2",color:"#DC2626",fontSize:10,cursor:"pointer",fontWeight:700}}>✕</button>}
-          <button onClick={()=>{const targets=choHangFiltered;sel.size===targets.length&&targets.every(g=>sel.has(g.key))?setSel(new Set()):setSel(new Set(targets.map(g=>g.key)));}} style={{fontSize:10,padding:"3px 8px",borderRadius:4,border:"none",background:t.ab,color:t.ac,cursor:"pointer",fontWeight:600}}>{sel.size===choHangFiltered.length&&choHangFiltered.every(g=>sel.has(g.key))?"Bỏ chọn":"Chọn tất cả"}</button>
+          <button onClick={()=>{const targets=choHangFiltered;sel.size===targets.length&&targets.every(g=>sel.has(g.key))?setSel(prev=>{const next=new Set(prev);targets.forEach(g=>next.delete(g.key));return next;}):setSel(new Set(targets.map(g=>g.key)));}} style={{fontSize:10,padding:"3px 8px",borderRadius:4,border:"none",background:t.ab,color:t.ac,cursor:"pointer",fontWeight:600}}>{sel.size===choHangFiltered.length&&choHangFiltered.every(g=>sel.has(g.key))?"Bỏ chọn":"Chọn tất cả"}</button>
         </div>
       </div>
       {choHangFiltered.length===0&&<div style={{padding:20,textAlign:"center",color:t.dm}}>{searchWait?`Không có SKU nào khớp "${searchWait}"`:"Không có đơn Chờ hàng"}</div>}
@@ -2148,7 +2151,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                     <th style={{textAlign:"right",padding:"2px 4px"}}>SL</th>
                   </tr></thead>
                   <tbody>{b.items.map((it,j)=>{
-                    const img=getImg(it.sku);
+                    const img=getImg(it.ma||it.sku);
                     const hit=itemMatches(it); // ★ v3.2: highlight nếu match search
                     return <tr key={j} style={{borderBottom:`1px solid ${t.bd}22`,background:hit?"#FEF9C3":"transparent"}}>
                       <td style={{padding:"2px 4px"}}>{img?<img src={img} style={{width:28,height:28,objectFit:"cover",borderRadius:3}} onError={e=>e.target.style.display="none"}/>:<span style={{fontSize:8,color:t.dm}}>📷</span>}</td>
@@ -2163,15 +2166,15 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                   <button onClick={async()=>{
                     const totalQtyH=b.items.reduce((s,it)=>s+Number(it.qty||0),0);
                     if(!confirm(`🔄 Ship lại đợt này (${g.emsCode})\n${b.items.length} SKU · ${totalQtyH} SP\n\nOK?`))return;
-                    await safePost({action:"shipEMSWithStock",ems:{emsCode:g.emsCode,items:b.items}},`✅ Kiện ${g.emsCode} · ${totalQtyH} SP vào kho`);
+                    await safePost({action:"shipEMSWithStock",ems:{emsCode:g.emsCode,items:b.items.map(i=>({...i, ma:i.ma||i.sku||""}))}},`✅ Kiện ${g.emsCode} · ${totalQtyH} SP vào kho`);
                   }} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#F59E0B",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:700}}>🔄 Ship lại</button>
                   <button onClick={()=>setEditingHist({rowIndex:b.rowIndex,emsCode:g.emsCode,items:b.items.map(x=>({...x}))})} disabled={!b.rowIndex} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#7C3AED",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:700,opacity:b.rowIndex?1:.5}} title={b.rowIndex?"Sửa items":"Cần redeploy Apps Script v3.1+"}>✏️ Sửa</button>
                   <button onClick={()=>deleteHistBatch(b.rowIndex,g.emsCode)} disabled={busy||!b.rowIndex} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #DC2626",background:"#fff",color:"#DC2626",fontSize:10,cursor:"pointer",fontWeight:600,opacity:(busy||!b.rowIndex)?.5:1}} title={b.rowIndex?"Xoá đợt khỏi lịch sử":"Cần redeploy Apps Script v3.1+"}>🗑 Xoá đợt</button>
                   <button onClick={()=>{
                     const pdfRows=b.items.map((l,i)=>{
-                      const img=getImg(l.sku);
+                      const img=getImg(l.ma);
                       const imgHtml=img?`<img src="${img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px">`:`-`;
-                      return `<tr><td>${i+1}</td><td>${imgHtml}</td><td><b>${l.sku}</b></td><td>${l.size||""}</td><td>${l.color||""}</td><td style="text-align:right"><b>${l.qty}</b></td></tr>`;
+                      return `<tr><td>${i+1}</td><td>${imgHtml}</td><td><b>${l.ma}</b></td><td>${l.size||""}</td><td>${l.color||""}</td><td style="text-align:right"><b>${l.qty}</b></td></tr>`;
                     }).join("");
                     const pdfHtml=`<html><head><meta charset="utf-8"><title>EMS ${g.emsCode}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;padding:30px;font-size:13px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#7C3AED;color:#fff;padding:8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}.ems{font-family:monospace;font-size:20px;font-weight:bold;padding:10px;border:2px solid #F59E0B;border-radius:8px;text-align:center;margin:12px 0;background:#FFFBEB}img{display:block}@media print{body{padding:15px}}</style></head><body><h1>📦 PACKING LIST</h1><h2>${b.date} · Shop MAM</h2><div class="ems">EMS: ${g.emsCode}</div><table><thead><tr><th>#</th><th>Ảnh</th><th>Mã SP</th><th>Size</th><th>Màu</th><th style="text-align:right">SL</th></tr></thead><tbody>${pdfRows}</tbody></table><div style="font-size:16px;font-weight:bold;margin:12px 0;padding:10px;background:#F3EEFF;border-radius:8px">Tổng: ${b.totalQty} SP · ${b.skuCount} SKU</div></body></html>`;
                     const w=window.open("","_blank","width=700,height=900");
@@ -2249,7 +2252,7 @@ function ProductTab({catalog,orders,stock,surplusData,safePost,busy,t,msg}){
 
   const doSave=async()=>{
     if(!f.ma)return;
-    const product={maSP:f.ma,tenSP:f.ten,giaBan:Number(f.ban)||0,giaNhap:Number(f.nhap)||0,size:f.size,mau:f.mau,loai:f.loai,daBan:f.daBan||0};
+    const product={maSP:f.ma,tenSP:f.ten,giaBan:Number(f.ban)||0,giaMua:Number(f.nhap)||0,size:f.size,mau:f.mau,loai:f.loai,daBan:f.daBan||0};
     if(edit){
       await safePost({action:"updateProduct",rowIndex:edit,product},"✅ Cập nhật "+f.ma);
     }else{
@@ -2308,7 +2311,7 @@ function ProductTab({catalog,orders,stock,surplusData,safePost,busy,t,msg}){
           const hot=c._total>=10;
           const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
           const du=surplusData?surplusData.filter(s=>norm(s.ma)===norm(c["Mã SP"])).reduce((a,x)=>a+x.sl,0):0;
-          const img=String(c["Ảnh"]||"").trim();
+          const img=String(c["image"]||c["Ảnh"]||"").trim();
           return <tr key={i} style={{borderBottom:`1px solid ${t.bd}`,background:hot?`${t.ac}08`:"transparent"}}>
             <td style={{padding:"3px 4px",width:40}}>
               {img?<img src={img} style={{width:34,height:34,objectFit:"cover",borderRadius:4}} onError={e=>e.target.style.display="none"}/>:

@@ -88,8 +88,10 @@ async function getFullData() {
       "SL dư": s.sl,
       "Trạng thái": s.note ?? "",
     })),
-    emsHistory: emsBatches.map((b) => ({
+    emsHistory: emsBatches.map((b, index) => ({
       id: b.id,
+      _rowIndex: index,
+      date: b.createdAt.toISOString().slice(0, 10),
       emsCode: b.emsCode,
       createdAt: b.createdAt,
       items: JSON.parse(b.items),
@@ -100,6 +102,15 @@ async function getFullData() {
 async function nextRowIndex(): Promise<number> {
   const last = await prisma.dtOrder.findFirst({ orderBy: { rowIndex: "desc" } });
   return last ? last.rowIndex + 1 : 1;
+}
+
+function safeDate(v: unknown): Date {
+  try {
+    const d = new Date(v as string);
+    return isNaN(d.getTime()) ? new Date() : d;
+  } catch {
+    return new Date();
+  }
 }
 
 function todayStr(): string {
@@ -130,44 +141,60 @@ export async function POST(request: NextRequest) {
       // ── Orders ──────────────────────────────────────────
       case "addOrder": {
         const o = body.order ?? body;
-        const ri = await nextRowIndex();
-        await prisma.dtOrder.create({
-          data: {
-            rowIndex: ri,
-            tenKhach: String(o.tenKhach ?? ""),
-            tenSp: String(o.tenSp ?? ""),
-            maSP: String(o.maSP ?? ""),
-            size: String(o.size ?? ""),
-            color: String(o.color ?? ""),
-            soLuong: Number(o.soLuong) || 1,
-            giaSp: Number(o.giaSp) || 0,
-            linkFb: String(o.linkFb ?? ""),
-            trangThai: "CHƯA ĐẶT",
-            ngayOd: o.ngayOd ? new Date(o.ngayOd) : new Date(),
-          },
-        });
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const ri = await nextRowIndex();
+            await prisma.dtOrder.create({
+              data: {
+                rowIndex: ri,
+                tenKhach: String(o.tenKhach ?? ""),
+                tenSp: String(o.tenSp ?? ""),
+                maSP: String(o.maSP ?? ""),
+                size: String(o.size ?? ""),
+                color: String(o.color ?? ""),
+                soLuong: Number(o.soLuong) || 1,
+                giaSp: Number(o.giaSp) || 0,
+                linkFb: String(o.linkFb ?? ""),
+                trangThai: "CHƯA ĐẶT",
+                ngayOd: o.ngayOd ? safeDate(o.ngayOd) : new Date(),
+              },
+            });
+            break;
+          } catch (err: unknown) {
+            const isUniqueConstraint = err instanceof Error && (err.message.includes("Unique constraint") || err.message.includes("P2002"));
+            if (!isUniqueConstraint || attempt === 2) throw err;
+          }
+        }
         break;
       }
 
       case "addBatchOrders": {
         const orders: Array<Record<string, unknown>> = body.orders ?? [];
-        let ri = await nextRowIndex();
         for (const o of orders) {
-          await prisma.dtOrder.create({
-            data: {
-              rowIndex: ri++,
-              tenKhach: (o.tenKhach as string) ?? "",
-              tenSp: (o.tenSp as string) ?? "",
-              maSP: (o.maSP as string) ?? "",
-              size: (o.size as string) ?? "",
-              color: (o.color as string) ?? "",
-              soLuong: Number(o.soLuong) || 1,
-              giaSp: Number(o.giaSp) || 0,
-              linkFb: (o.linkFb as string) ?? "",
-              trangThai: "CHƯA ĐẶT",
-              ngayOd: o.ngayOd ? new Date(o.ngayOd as string) : new Date(),
-            },
-          });
+          for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+              const ri = await nextRowIndex();
+              await prisma.dtOrder.create({
+                data: {
+                  rowIndex: ri,
+                  tenKhach: String(o.tenKhach ?? ""),
+                  tenSp: String(o.tenSp ?? ""),
+                  maSP: String(o.maSP ?? ""),
+                  size: String(o.size ?? ""),
+                  color: String(o.color ?? ""),
+                  soLuong: Number(o.soLuong) || 1,
+                  giaSp: Number(o.giaSp) || 0,
+                  linkFb: String(o.linkFb ?? ""),
+                  trangThai: "CHƯA ĐẶT",
+                  ngayOd: o.ngayOd ? safeDate(o.ngayOd) : new Date(),
+                },
+              });
+              break;
+            } catch (err: unknown) {
+              const isUniqueConstraint = err instanceof Error && (err.message.includes("Unique constraint") || err.message.includes("P2002"));
+              if (!isUniqueConstraint || attempt === 2) throw err;
+            }
+          }
         }
         break;
       }
@@ -247,11 +274,18 @@ export async function POST(request: NextRequest) {
           const order = await prisma.dtOrder.findUnique({ where: { rowIndex: ri } });
           if (!order) continue;
           const existing = order.note ?? "";
-          const newNote = existing ? `${existing} ${stamp}` : stamp;
-          await prisma.dtOrder.update({
-            where: { rowIndex: ri },
-            data: { trangThai: "Đã gửi", note: newNote },
-          });
+          if (existing.includes("📮SENT")) {
+            await prisma.dtOrder.update({
+              where: { rowIndex: ri },
+              data: { trangThai: "Đã gửi" },
+            });
+          } else {
+            const newNote = existing ? `${existing} ${stamp}` : stamp;
+            await prisma.dtOrder.update({
+              where: { rowIndex: ri },
+              data: { trangThai: "Đã gửi", note: newNote },
+            });
+          }
         }
         break;
       }
@@ -366,7 +400,7 @@ export async function POST(request: NextRequest) {
             sz: String(body.size ?? ""),
             cl: String(body.color ?? ""),
             sl: Number(body.qty) || 0,
-            note: body.note ?? null,
+            note: body.status ?? body.note ?? null,
           },
         });
         break;
@@ -382,7 +416,7 @@ export async function POST(request: NextRequest) {
           },
         });
         for (const item of emsItems) {
-          const ma = String(item.ma ?? item.maSP ?? "");
+          const ma = String(item.ma ?? item.maSP ?? item.sku ?? "");
           const size = String(item.size ?? item.sz ?? "");
           const color = String(item.color ?? item.cl ?? "");
           const qty = Number(item.qty ?? item.soLuong ?? 0);
@@ -397,11 +431,15 @@ export async function POST(request: NextRequest) {
 
       case "editEMSHistory": {
         const ems = body.ems ?? body;
-        const batches = await prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } });
-        const idx = Number(body.rowIndex ?? 0);
-        if (idx >= 0 && idx < batches.length) {
+        let targetId: string | undefined = body.id ?? ems.id;
+        if (!targetId) {
+          const batches = await prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } });
+          const idx = Number(body.rowIndex ?? 0);
+          if (idx >= 0 && idx < batches.length) targetId = batches[idx].id;
+        }
+        if (targetId) {
           await prisma.dtEmsBatch.update({
-            where: { id: batches[idx].id },
+            where: { id: targetId },
             data: {
               emsCode: String(ems.emsCode ?? ""),
               items: JSON.stringify(ems.items ?? []),
@@ -412,10 +450,14 @@ export async function POST(request: NextRequest) {
       }
 
       case "deleteEMSHistory": {
-        const batches = await prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } });
-        const idx = Number(body.rowIndex ?? 0);
-        if (idx >= 0 && idx < batches.length) {
-          await prisma.dtEmsBatch.delete({ where: { id: batches[idx].id } });
+        let targetId: string | undefined = body.id;
+        if (!targetId) {
+          const batches = await prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } });
+          const idx = Number(body.rowIndex ?? 0);
+          if (idx >= 0 && idx < batches.length) targetId = batches[idx].id;
+        }
+        if (targetId) {
+          await prisma.dtEmsBatch.delete({ where: { id: targetId } });
         }
         break;
       }
@@ -427,7 +469,7 @@ export async function POST(request: NextRequest) {
             maSP: String(p.ma ?? p.maSP ?? ""),
             tenSP: String(p.ten ?? p.tenSP ?? ""),
             giaBan: Number(p.gia ?? p.giaBan ?? 0),
-            giaMua: p.giaMua != null ? Number(p.giaMua) : null,
+            giaMua: p.giaMua != null ? Number(p.giaMua) : p.giaNhap != null ? Number(p.giaNhap) : null,
             link: p.link ?? null,
             image: p.image ?? null,
           },
@@ -441,7 +483,7 @@ export async function POST(request: NextRequest) {
         const updateData: Record<string, unknown> = {};
         if (p.ten !== undefined || p.tenSP !== undefined) updateData.tenSP = String(p.ten ?? p.tenSP);
         if (p.gia !== undefined || p.giaBan !== undefined) updateData.giaBan = Number(p.gia ?? p.giaBan);
-        if (p.giaMua !== undefined) updateData.giaMua = p.giaMua != null ? Number(p.giaMua) : null;
+        if (p.giaMua !== undefined || p.giaNhap !== undefined) updateData.giaMua = p.giaMua != null ? Number(p.giaMua) : p.giaNhap != null ? Number(p.giaNhap) : null;
         if (p.link !== undefined) updateData.link = p.link;
         if (p.image !== undefined) updateData.image = p.image;
         await prisma.dtCatalog.update({ where: { maSP }, data: updateData });
