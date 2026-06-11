@@ -912,7 +912,7 @@ function App(){
     ds:gzData.reduce((s,g)=>s+g.dangShip,0)
   }),[gzData]);
 
-  if(!auth)return null;
+  if(!auth)return <LoginScreen onLogin={()=>{setAuth(true);load();}} t={t}/>;
 
   const chuaCKcount=useMemo(()=>shipped.filter(o=>!(o._note||"").includes("💰CK")&&!["Đã xoá","Lưu trữ"].includes(o["TRẠNG THÁI"])).length,[shipped]);
   const NAV=[{id:"dash",icon:"📊",l:"Dashboard"},{id:"orders",icon:"📋",l:"Đơn",n:active.length},{id:"gz",icon:"🏭",l:"Đặt GZ",n:gzCounts.cd},{id:"ems",icon:"✈️",l:"EMS",n:gzCounts.ch||""},{id:"ship",icon:"🚚",l:"Chờ gửi",n:stats.byS["Về kho"]||0},{id:"stock",icon:"📦",l:"Kho",n:stock.length},{id:"product",icon:"🏷️",l:"SP",n:catalog.length},{id:"tools",icon:"🛠",l:"Tools"},{id:"history",icon:"💳",l:chuaCKcount>0?`CK(${chuaCKcount})`:"Đã gửi",n:chuaCKcount||shipped.length}];
