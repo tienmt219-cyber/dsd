@@ -520,6 +520,31 @@ function exportBOSS(items, addrs) {
   return Object.keys(byCust).length;
 }
 
+// ═══ INLINE EDIT CELL ═══
+function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catalog,t}){
+  const [editing,setEditing]=useState(false);
+  const [val,setVal]=useState(String(value??""));
+  const ref=useRef(null);
+  useEffect(()=>{setVal(String(value??""));},[value]);
+  useEffect(()=>{if(editing&&ref.current){ref.current.focus();if(type!=="select")ref.current.select();}});
+  const save=()=>{
+    setEditing(false);
+    const oldVal=String(value??"");
+    if(val===oldVal)return;
+    const fields={};
+    if(field==="soLuong")fields.soLuong=Number(val)||1;
+    else if(field==="giaSp")fields.giaSp=Number(val)||0;
+    else fields[field]=val;
+    if(field==="maSP"&&catalog){const cat=catalog.find(c=>String(c["Mã SP"]||"").trim().toUpperCase()===val.trim().toUpperCase());if(cat){fields.tenSp=cat["Tên SP"]||"";fields.giaSp=Number(cat["Giá bán"])||0;}}
+    safePost({action:"editOrder",rowIndex,fields},"✅ Đã sửa");
+  };
+  const onKey=e=>{if(e.key==="Enter")save();if(e.key==="Escape"){setVal(String(value??""));setEditing(false);}};
+  if(!editing)return <td style={{...style,cursor:"pointer"}} onClick={()=>{if(!busy)setEditing(true);}}>{type==="price"?"¥"+Number(value||0).toLocaleString("vi-VN"):String(value??"")}</td>;
+  const is={padding:"2px 4px",border:`2px solid ${t.ac}`,borderRadius:4,fontSize:12,background:t.sf,color:t.tx,width:"100%",fontFamily:"inherit",outline:"none"};
+  if(type==="select")return <td style={style}><select ref={ref} value={val} onChange={e=>{setVal(e.target.value);setTimeout(()=>{const fields={};fields[field]=e.target.value;safePost({action:"editOrder",rowIndex,fields},"✅ Đã sửa");setEditing(false);},0);}} onBlur={()=>setEditing(false)} style={is}>{(options||[]).map(o=><option key={o}>{o}</option>)}{val&&!options?.includes(val)&&<option>{val}</option>}</select></td>;
+  return <td style={style}><input ref={ref} value={val} onChange={e=>setVal(e.target.value)} onBlur={save} onKeyDown={onKey} type={type==="number"||type==="price"?"number":"text"} style={is}/></td>;
+}
+
 // ═══ MAIN ═══
 function App(){
   const [auth,setAuth]=useState(true);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
@@ -1091,13 +1116,13 @@ function App(){
               <tbody>{filtered.map(o=>{const isS=sel.has(o._rowIndex);const days=daysAgo(String(o["NGÀY OD"]||"").slice(0,10));const over=!["Đã gửi","Về kho"].includes(o["TRẠNG THÁI"])&&days>21;const dayColor=days<=7?"#16A34A":days<=21?"#D97706":"#DC2626";
                 return <tr key={o._rowIndex} style={{borderBottom:`1px solid ${t.bd}`,background:isS?t.ab:over?"#FEF2F2":"transparent"}}>
                   <td style={{padding:"5px 4px"}}><input type="checkbox" checked={isS} onChange={()=>setSel(p=>{const n=new Set(p);n.has(o._rowIndex)?n.delete(o._rowIndex):n.add(o._rowIndex);return n;})}/></td>
-                  <td style={{padding:"5px 3px",fontWeight:600,color:t.tx,maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer"}} onClick={()=>setCustFilter(String(o["Tên khách"]||"").trim())} title="Lọc theo khách"><div style={{display:"flex",alignItems:"center",gap:4}}><Avatar name={o["Tên khách"]} fb={o["Link fb"]} size={20} dup={dupNames[String(o["Tên khách"]||"").trim()]}/><span>{o["Tên khách"]}</span>{dupNames[String(o["Tên khách"]||"").trim()]&&<span style={{fontSize:8,color:t.dm,background:t.bg,padding:"0 3px",borderRadius:3}}>{fbShort(o["Link fb"])}</span>}</div></td>
-                  <td style={{padding:"5px 3px",color:t.dm,fontSize:11,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer"}} onClick={()=>setMEdit(o)} title="Bấm để sửa">{o["Tên Sp"]}</td>
-                  <td style={{padding:"5px 3px",fontWeight:600,color:t.ac,cursor:"pointer"}} onClick={()=>setMEdit(o)}>{o["Mã SP"]}</td>
-                  <td style={{padding:"5px 3px",fontSize:10,cursor:"pointer"}} onClick={()=>setMEdit(o)}>{o["SIZE"]}</td>
-                  <td style={{padding:"5px 3px",fontSize:10,cursor:"pointer"}} onClick={()=>setMEdit(o)}>{o["COLOR"]}</td>
-                  <td style={{padding:"5px 3px",fontWeight:600,cursor:"pointer"}} onClick={()=>setMEdit(o)}>{o["Số lượng"]}</td>
-                  <td style={{padding:"5px 3px",fontSize:10,color:t.dm,cursor:"pointer"}} onClick={()=>setMEdit(o)}>¥{fmt(o["Giá sp"])}</td>
+                  <td style={{padding:"5px 3px",fontWeight:600,color:t.tx,maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer"}} onClick={()=>setCustFilter(String(o["Tên khách"]||"").trim())} onDoubleClick={e=>{e.stopPropagation();setMEdit(o);}} title="Click=lọc · DblClick=sửa"><div style={{display:"flex",alignItems:"center",gap:4}}><Avatar name={o["Tên khách"]} fb={o["Link fb"]} size={20} dup={dupNames[String(o["Tên khách"]||"").trim()]}/><span>{o["Tên khách"]}</span>{dupNames[String(o["Tên khách"]||"").trim()]&&<span style={{fontSize:8,color:t.dm,background:t.bg,padding:"0 3px",borderRadius:3}}>{fbShort(o["Link fb"])}</span>}</div></td>
+                  <InlineCell value={o["Tên Sp"]} field="tenSp" rowIndex={o._rowIndex} safePost={safePost} busy={busy} catalog={catalog} t={t} style={{padding:"5px 3px",color:t.dm,fontSize:11,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}/>
+                  <InlineCell value={o["Mã SP"]} field="maSP" rowIndex={o._rowIndex} safePost={safePost} busy={busy} catalog={catalog} t={t} style={{padding:"5px 3px",fontWeight:600,color:t.ac}}/>
+                  <InlineCell value={o["SIZE"]} field="size" rowIndex={o._rowIndex} type="select" options={SIZES} safePost={safePost} busy={busy} t={t} style={{padding:"5px 3px",fontSize:10}}/>
+                  <InlineCell value={o["COLOR"]} field="color" rowIndex={o._rowIndex} type="select" options={COLORS} safePost={safePost} busy={busy} t={t} style={{padding:"5px 3px",fontSize:10}}/>
+                  <InlineCell value={o["Số lượng"]} field="soLuong" rowIndex={o._rowIndex} type="number" safePost={safePost} busy={busy} t={t} style={{padding:"5px 3px",fontWeight:600}}/>
+                  <InlineCell value={o["Giá sp"]} field="giaSp" rowIndex={o._rowIndex} type="price" safePost={safePost} busy={busy} t={t} style={{padding:"5px 3px",fontSize:10,color:t.dm}}/>
                   <td style={{padding:"5px 3px"}}>{days>0&&<span style={{fontSize:9,fontWeight:700,color:["Đã gửi"].includes(o["TRẠNG THÁI"])?"#16A34A":dayColor,background:["Đã gửi"].includes(o["TRẠNG THÁI"])?"#D1FAE5":dayColor+"15",padding:"1px 5px",borderRadius:4}}>{days}d</span>}{o["TRẠNG THÁI"]==="Đã gửi"&&<span style={{fontSize:8,fontWeight:700,marginLeft:2,padding:"1px 4px",borderRadius:3,background:(o._note||"").includes("💰CK")?"#D1FAE5":"#FEE2E2",color:(o._note||"").includes("💰CK")?"#065F46":"#DC2626"}}>{(o._note||"").includes("💰CK")?"✅":"💳"}</span>}</td>
                   <td style={{padding:"5px 2px"}}><select value={o["TRẠNG THÁI"]} onChange={e=>{
                     const newSt=e.target.value;const name=String(o["Tên khách"]||"").trim();
@@ -1121,7 +1146,7 @@ function App(){
               </tr></tfoot>
             </table></div>
           </div>
-          <div style={{fontSize:10,color:t.dm,marginTop:4}}>💡 Bấm tên = lọc · Bấm SP/Size/Màu/SL/Giá = sửa · Bấm cột = sắp xếp</div>
+          <div style={{fontSize:10,color:t.dm,marginTop:4}}>💡 Bấm tên = lọc · Double-click tên = sửa · Bấm ô = sửa trực tiếp · Enter = lưu · Esc = huỷ</div>
         </div>}
 
         {/* ★ ĐẶT GZ — gom đơn + bulk update */}
