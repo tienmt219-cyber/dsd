@@ -88,16 +88,16 @@ let orderCount = 0;
 
 const insertOrders = db.transaction(() => {
   for (const o of data.orders) {
-    const tenKhach = normName(o["Tên khách"]);
+    const tenKhach = String(o["Tên khách"] ?? "").trim();
     if (!tenKhach) continue;
     insertOrder.run(
       cuid(),
       o._rowIndex || (orderCount + 2),
       tenKhach,
       String(o["Tên Sp"] ?? ""),
-      norm(o["Mã SP"]),
-      norm(o["SIZE"] ?? ""),
-      norm(o["COLOR"] ?? ""),
+      String(o["Mã SP"] ?? "").trim(),
+      String(o["SIZE"] ?? "").trim(),
+      String(o["COLOR"] ?? "").trim(),
       Number(o["Số lượng"]) || 1,
       Number(o["Giá sp"]) || 0,
       toISOStr(o["NGÀY OD"]),
