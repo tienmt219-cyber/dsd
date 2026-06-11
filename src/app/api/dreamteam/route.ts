@@ -392,6 +392,17 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case "editSurplus": {
+        const updateData: Record<string, unknown> = {};
+        if (body.ma !== undefined) updateData.ma = String(body.ma);
+        if (body.sz !== undefined) updateData.sz = String(body.sz);
+        if (body.cl !== undefined) updateData.cl = String(body.cl);
+        if (body.sl !== undefined) updateData.sl = Number(body.sl);
+        if (body.note !== undefined) updateData.note = body.note;
+        await prisma.dtSurplus.update({ where: { id: body.id }, data: updateData });
+        break;
+      }
+
       case "addSurplus": {
         await prisma.dtSurplus.create({
           data: {

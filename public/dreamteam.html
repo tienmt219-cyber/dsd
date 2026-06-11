@@ -521,7 +521,7 @@ function exportBOSS(items, addrs) {
 }
 
 // ═══ INLINE EDIT CELL ═══
-function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catalog,t}){
+function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catalog,t,onSave}){
   const [editing,setEditing]=useState(false);
   const [val,setVal]=useState(String(value??""));
   const ref=useRef(null);
@@ -531,6 +531,7 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
     setEditing(false);
     const oldVal=String(value??"");
     if(val===oldVal)return;
+    if(onSave){onSave(field,val);return;}
     const fields={};
     if(field==="soLuong")fields.soLuong=Number(val)||1;
     else if(field==="giaSp")fields.giaSp=Number(val)||0;
@@ -541,7 +542,7 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
   const onKey=e=>{if(e.key==="Enter")save();if(e.key==="Escape"){setVal(String(value??""));setEditing(false);}};
   if(!editing)return <td style={{...style,cursor:"pointer"}} onClick={()=>{if(!busy)setEditing(true);}}>{type==="price"?"¥"+Number(value||0).toLocaleString("vi-VN"):String(value??"")}</td>;
   const is={padding:"2px 4px",border:`2px solid ${t.ac}`,borderRadius:4,fontSize:12,background:t.sf,color:t.tx,width:"100%",fontFamily:"inherit",outline:"none"};
-  if(type==="select")return <td style={style}><select ref={ref} value={val} onChange={e=>{setVal(e.target.value);setTimeout(()=>{const fields={};fields[field]=e.target.value;safePost({action:"editOrder",rowIndex,fields},"✅ Đã sửa");setEditing(false);},0);}} onBlur={()=>setEditing(false)} style={is}>{(options||[]).map(o=><option key={o}>{o}</option>)}{val&&!options?.includes(val)&&<option>{val}</option>}</select></td>;
+  if(type==="select")return <td style={style}><select ref={ref} value={val} onChange={e=>{setVal(e.target.value);setTimeout(()=>{if(onSave){onSave(field,e.target.value);setEditing(false);return;}const fields={};fields[field]=e.target.value;safePost({action:"editOrder",rowIndex,fields},"✅ Đã sửa");setEditing(false);},0);}} onBlur={()=>setEditing(false)} style={is}>{(options||[]).map(o=><option key={o}>{o}</option>)}{val&&!options?.includes(val)&&<option>{val}</option>}</select></td>;
   return <td style={style}><input ref={ref} value={val} onChange={e=>setVal(e.target.value)} onBlur={save} onKeyDown={onKey} type={type==="number"||type==="price"?"number":"text"} style={is}/></td>;
 }
 
@@ -751,7 +752,7 @@ function App(){
   // ★ HÀNG DƯ — đọc từ tab HÀNG DƯ (không tính toán)
   const surplusData=useMemo(()=>{
     return surplus.filter(s=>Number(s["SL dư"]||0)>0).map(s=>({
-      ma:s["Mã SP"],sz:s["Size"],cl:s["Color"],
+      id:s.id,ma:s["Mã SP"],sz:s["Size"],cl:s["Color"],
       sl:Number(s["SL dư"]||0),tt:s["Trạng thái"]||""
     }));
   },[surplus]);
@@ -1722,13 +1723,13 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
       <div style={{background:t.sf,borderRadius:10,border:"1px solid #D1FAE5",overflow:"hidden",marginBottom:12}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
           <thead><tr style={{borderBottom:"2px solid #D1FAE5",background:"#F0FDF4"}}>{["Mã","Size","Màu","SL dư","TT"].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left",color:"#065F46",fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
-          <tbody>{surplusData.map((s,i)=><tr key={i} style={{borderBottom:"1px solid #D1FAE5"}}>
-            <td style={{padding:"7px 8px",fontWeight:600,color:t.ac}}>{s.ma}</td>
-            <td style={{padding:"7px 8px"}}>{s.sz}</td>
-            <td style={{padding:"7px 8px"}}>{s.cl}</td>
-            <td style={{padding:"7px 8px",fontWeight:700,color:"#16A34A"}}>{s.sl}</td>
+          <tbody>{surplusData.map((s,i)=>{const saveSurplus=(field,val)=>{const data={id:s.id};data[field]=field==="sl"?Number(val)||0:val;safePost({action:"editSurplus",...data},"✅ Đã sửa");};return <tr key={i} style={{borderBottom:"1px solid #D1FAE5"}}>
+            <InlineCell value={s.ma} field="ma" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px",fontWeight:600,color:t.ac}}/>
+            <InlineCell value={s.sz} field="sz" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px"}}/>
+            <InlineCell value={s.cl} field="cl" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px"}}/>
+            <InlineCell value={s.sl} field="sl" type="number" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px",fontWeight:700,color:"#16A34A"}}/>
             <td style={{padding:"7px 8px"}}><span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:s.tt==="Về kho"?"#D1FAE5":"#FEF3C7",color:s.tt==="Về kho"?"#065F46":"#92400E",fontWeight:600}}>{s.tt}</span></td>
-          </tr>)}</tbody>
+          </tr>;})}</tbody>
         </table>
       </div>
     </>}
@@ -1737,12 +1738,13 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
     <div style={{background:t.sf,borderRadius:10,border:`1px solid ${t.bd}`,overflow:"hidden"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
         <thead><tr style={{borderBottom:`2px solid ${t.bd}`}}>{["Mã","Size","Màu","SL","Ngày"].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left",color:t.dm,fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
-        <tbody>{stock.map((s,i)=><tr key={i} style={{borderBottom:`1px solid ${t.bd}`}}>
-          <td style={{padding:"7px 8px",fontWeight:600,color:t.ac}}>{s["Mã SP"]}</td>
-          <td style={{padding:"7px 8px"}}>{s["Size"]}</td><td style={{padding:"7px 8px"}}>{s["Color"]}</td>
-          <td style={{padding:"7px 8px",fontWeight:700,color:"#0D9488"}}>{s["Số lượng nhập"]}</td>
+        <tbody>{stock.map((s,i)=>{const saveStock=(field,val)=>{const map={ma:"Mã SP",size:"Size",color:"Color",soLuong:"Số lượng nhập"};const data={id:s.id};data[field]=field==="soLuong"?Number(val)||0:val;safePost({action:"editStock",...data},"✅ Đã sửa");};return <tr key={i} style={{borderBottom:`1px solid ${t.bd}`}}>
+          <InlineCell value={s["Mã SP"]} field="ma" t={t} busy={busy} safePost={safePost} onSave={saveStock} style={{padding:"7px 8px",fontWeight:600,color:t.ac}}/>
+          <InlineCell value={s["Size"]} field="size" t={t} busy={busy} safePost={safePost} onSave={saveStock} style={{padding:"7px 8px"}}/>
+          <InlineCell value={s["Color"]} field="color" t={t} busy={busy} safePost={safePost} onSave={saveStock} style={{padding:"7px 8px"}}/>
+          <InlineCell value={s["Số lượng nhập"]} field="soLuong" type="number" t={t} busy={busy} safePost={safePost} onSave={saveStock} style={{padding:"7px 8px",fontWeight:700,color:"#0D9488"}}/>
           <td style={{padding:"7px 8px",color:t.dm,fontSize:10}}>{String(s["Ngày nhập"]||"").slice(0,10)}</td>
-        </tr>)}</tbody>
+        </tr>;})}</tbody>
       </table>
     </div>
   </div>;
@@ -2337,6 +2339,7 @@ function ProductTab({catalog,orders,stock,surplusData,safePost,busy,t,msg}){
           const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
           const du=surplusData?surplusData.filter(s=>norm(s.ma)===norm(c["Mã SP"])).reduce((a,x)=>a+x.sl,0):0;
           const img=String(c["image"]||c["Ảnh"]||"").trim();
+          const saveCat=(field,val)=>{const data={action:"editCatalog",maSP:String(c["Mã SP"])};if(field==="tenSP")data.tenSP=val;else if(field==="giaBan")data.giaBan=Number(val)||0;else if(field==="giaMua")data.giaMua=Number(val)||0;safePost(data,"✅ Đã sửa");};
           return <tr key={i} style={{borderBottom:`1px solid ${t.bd}`,background:hot?`${t.ac}08`:"transparent"}}>
             <td style={{padding:"3px 4px",width:40}}>
               {img?<img src={img} style={{width:34,height:34,objectFit:"cover",borderRadius:4}} onError={e=>e.target.style.display="none"}/>:
@@ -2346,9 +2349,9 @@ function ProductTab({catalog,orders,stock,surplusData,safePost,busy,t,msg}){
               </label>}
             </td>
             <td style={{padding:"5px 4px",fontWeight:600,color:t.ac}}>{c["Mã SP"]} {hot&&<span style={{fontSize:8}}>🔥</span>}</td>
-            <td style={{padding:"5px 4px",color:t.tx,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c["Tên SP"]}</td>
-            <td style={{padding:"5px 4px",fontWeight:600}}>¥{fmt(c["Giá bán"])}</td>
-            <td style={{padding:"5px 4px",color:t.dm}}>{c["Giá nhập"]?`¥${fmt(c["Giá nhập"])}`:"—"}</td>
+            <InlineCell value={c["Tên SP"]} field="tenSP" t={t} busy={busy} safePost={safePost} onSave={saveCat} style={{padding:"5px 4px",color:t.tx,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}/>
+            <InlineCell value={c["Giá bán"]} field="giaBan" type="price" t={t} busy={busy} safePost={safePost} onSave={saveCat} style={{padding:"5px 4px",fontWeight:600}}/>
+            <InlineCell value={c["Giá nhập"]} field="giaMua" type="price" t={t} busy={busy} safePost={safePost} onSave={saveCat} style={{padding:"5px 4px",color:t.dm}}/>
             <td style={{padding:"5px 4px"}}>{mg?<span style={{fontSize:10,fontWeight:600,color:Number(mg)>40?"#065F46":Number(mg)<20?"#991B1B":"#92400E",background:Number(mg)>40?"#D1FAE5":Number(mg)<20?"#FEE2E2":"#FEF3C7",padding:"1px 5px",borderRadius:4}}>{mg}%</span>:"—"}</td>
             <td style={{padding:"5px 4px",fontWeight:600,color:"#16A34A"}}>{c._sold||"—"}</td>
             <td style={{padding:"5px 4px",color:"#D97706"}}>{c._pending||"—"}</td>
