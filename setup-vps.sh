@@ -53,6 +53,6 @@ nginx -t && systemctl restart nginx
 echo ""
 echo "=========================================="
 echo "  SETUP XONG!"
-echo "  Truy cap: http://45.76.213.154"
-echo "  Dream Team: http://45.76.213.154/dreamteam.html"
+echo "  Truy cap: http://45.77.28.47"
+echo "  Dream Team: http://45.77.28.47/dreamteam.html"
 echo "=========================================="
