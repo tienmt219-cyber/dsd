@@ -4,7 +4,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const { pathname } = request.nextUrl;
 
-  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/dreamteam")) {
+  if (pathname.startsWith("/api/auth") || pathname.startsWith("/api/dreamteam") || pathname === "/dreamteam.html") {
     return NextResponse.next();
   }
 
