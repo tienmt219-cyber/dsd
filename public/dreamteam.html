@@ -730,7 +730,7 @@ function App(){
       const cost=(nhap+SHIP_GZ+BOSS_PER_ITEM)*qty;
       return s+(Number(x["Giá sp"])||0)*qty-cost;
     },0);
-    const cust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"")+"|"+String(x["Link fb"]||"")))].length;
+    const cust=[...new Set(allValid.map(x=>{const n=normName(String(x["Tên khách"]||""));const fbKey=normalizeFB(String(x["Link fb"]||""));return fbKey?"fb:"+fbKey:"name:"+n;}))].length;
     const overdue=allValid.filter(x=>{if(["Đã gửi","Về kho"].includes(x["TRẠNG THÁI"]))return false;const d=String(x["NGÀY OD"]||"").slice(0,10);return d&&daysAgo(d)>21;}).length;
     const byDate={};allValid.forEach(x=>{const d=String(x["NGÀY OD"]||"").slice(0,10);if(d)byDate[d]=(byDate[d]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
     const revChart=Object.keys(byDate).sort().slice(-7).map(d=>({l:d.slice(5),v:byDate[d]}));
