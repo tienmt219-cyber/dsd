@@ -6,7 +6,7 @@ set -e
 #  Usage: ssh root@YOUR_VPS_IP 'bash -s' < setup-vps.sh
 # ═══════════════════════════════════════════════════
 
-VPS_IP="${VPS_IP:-YOUR_VPS_IP}"
+VPS_IP="${VPS_IP:-45.77.28.47}"
 BRANCH="claude/trusting-hawking-pjeiko"
 APP_DIR="/root/dsd"
 DOMAIN="${DOMAIN:-}"
