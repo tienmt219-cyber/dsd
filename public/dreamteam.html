@@ -522,7 +522,7 @@ function exportBOSS(items, addrs) {
 
 // ═══ MAIN ═══
 function App(){
-  const [auth,setAuth]=useState(false);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
+  const [auth,setAuth]=useState(true);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
   const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt_dark",v?"1":"0")}catch(e){}};
   const [orders,setOrders]=useState([]);const [stock,setStock]=useState([]);const [catalog,setCatalog]=useState([]);const [addrs,setAddrs]=useState({});const [surplus,setSurplus]=useState([]);const [emsHistory,setEmsHistory]=useState([]);
   const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [toast,setToast]=useState(null);const [lastSync,setLastSync]=useState(null);
@@ -912,7 +912,7 @@ function App(){
     ds:gzData.reduce((s,g)=>s+g.dangShip,0)
   }),[gzData]);
 
-  if(!auth)return <LoginScreen onLogin={()=>{setAuth(true);load();}} t={t}/>;
+  // auth check removed — handled by VPS access
 
   const chuaCKcount=useMemo(()=>shipped.filter(o=>!(o._note||"").includes("💰CK")&&!["Đã xoá","Lưu trữ"].includes(o["TRẠNG THÁI"])).length,[shipped]);
   const NAV=[{id:"dash",icon:"📊",l:"Dashboard"},{id:"orders",icon:"📋",l:"Đơn",n:active.length},{id:"gz",icon:"🏭",l:"Đặt GZ",n:gzCounts.cd},{id:"ems",icon:"✈️",l:"EMS",n:gzCounts.ch||""},{id:"ship",icon:"🚚",l:"Chờ gửi",n:stats.byS["Về kho"]||0},{id:"stock",icon:"📦",l:"Kho",n:stock.length},{id:"product",icon:"🏷️",l:"SP",n:catalog.length},{id:"tools",icon:"🛠",l:"Tools"},{id:"history",icon:"💳",l:chuaCKcount>0?`CK(${chuaCKcount})`:"Đã gửi",n:chuaCKcount||shipped.length}];
