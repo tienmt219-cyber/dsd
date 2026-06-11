@@ -188,24 +188,36 @@ model DtOrder {
 }
 
 model DtCatalog {
-  id     String  @id @default(cuid())
-  maSP   String  @unique
-  tenSP  String
-  giaBan Float   // selling price JPY
-  giaMua Float?  // cost price
-  link   String? // product link
-  image  String?
+  id       String  @id @default(cuid())
+  maSP     String  @unique
+  tenSP    String
+  giaBan   Float   // selling price JPY
+  giaMua   Float?  // cost price
+  link     String? // product link
+  image    String?
+  loiNhuan Int     @default(0)
+  margin   Float   @default(0)
+  sizes    String  @default("")
+  colors   String  @default("")
+  daBan    Int     @default(0)
+  loai     String  @default("")
 }
 
 model DtAddress {
-  id     String  @id @default(cuid())
-  name   String
-  fb     String  // Facebook link
-  postal String  @default("")
-  pref   String  @default("")
-  city   String  @default("")
-  street String  @default("")
-  phone  String  @default("")
+  id       String  @id @default(cuid())
+  name     String
+  fb       String  // Facebook link
+  postal   String  @default("")
+  pref     String  @default("")
+  city     String  @default("")
+  street   String  @default("")
+  phone    String  @default("")
+  soDon    Int     @default(0)
+  tongSl   Int     @default(0)
+  doanhThu Int     @default(0)
+  giaTb    Int     @default(0)
+  linkFb   String  @default("")
+  hang     String  @default("")
 
   @@unique([name, fb])
 }
@@ -218,6 +230,7 @@ model DtStock {
   color   String  @default("")
   soLuong Int     @default(0)
   note    String?
+  ngayNhap String @default("")
 }
 
 model DtEmsBatch {
@@ -225,14 +238,27 @@ model DtEmsBatch {
   emsCode   String
   createdAt DateTime @default(now())
   items     String   // JSON string
+  skuCount  Int      @default(0)
+  totalQty  Int      @default(0)
+  chiTiet   String   @default("")
+  status    String   @default("Đã nhập kho")
+  lastCheck String   @default("")
+  trackRaw  String   @default("")
 }
 
 model DtSurplus {
-  id   String  @id @default(cuid())
-  ma   String  // product code
-  ten  String  // product name
-  sz   String  @default("")
-  cl   String  @default("")
-  sl   Int     @default(0)
-  note String?
+  id       String  @id @default(cuid())
+  ma       String  // product code
+  ten      String  // product name
+  sz       String  @default("")
+  cl       String  @default("")
+  sl       Int     @default(0)
+  note     String?
+  trangThai String @default("Chờ hàng")
+  ngayTao  String  @default("")
+}
+
+model DtSetting {
+  key   String @id
+  value String @default("")
 }
