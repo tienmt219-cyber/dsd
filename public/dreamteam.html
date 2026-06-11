@@ -736,7 +736,7 @@ function App(){
     const revChart=Object.keys(byDate).sort().slice(-7).map(d=>({l:d.slice(5),v:byDate[d]}));
     const spM={};allValid.forEach(x=>{const k=String(x["Mã SP"]);if(!spM[k])spM[k]={m:k,n:x["Tên Sp"],q:0};spM[k].q+=Number(x["Số lượng"]||0);});
     const topSP=Object.values(spM).sort((a,b)=>b.q-a.q).slice(0,5);
-    const cuM={};allValid.forEach(x=>{const k=String(x["Tên khách"]||"")+"|"+normalizeFB(String(x["Link fb"]||""));if(!cuM[k])cuM[k]={n:String(x["Tên khách"]||""),fb:String(x["Link fb"]||""),r:0};cuM[k].r+=(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
+    const cuM={};allValid.forEach(x=>{const k=normName(String(x["Tên khách"]||""));if(!k)return;if(!cuM[k])cuM[k]={n:k,fb:String(x["Link fb"]||""),r:0};cuM[k].r+=(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
     const topCust=Object.values(cuM).sort((a,b)=>b.r-a.r).slice(0,5);
     const pendingDays=allValid.filter(x=>!["Đã gửi","Đã xoá"].includes(x["TRẠNG THÁI"])).map(x=>daysAgo(String(x["NGÀY OD"]||"").slice(0,10))).filter(d=>d>0);
     const avgDays=pendingDays.length?Math.round(pendingDays.reduce((a,b)=>a+b,0)/pendingDays.length):0;
