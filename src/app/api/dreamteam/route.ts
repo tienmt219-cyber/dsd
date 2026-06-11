@@ -157,7 +157,7 @@ async function getFullData() {
         "Giá sp": o.giaSp,
         "Link fb": o.linkFb,
         "TRẠNG THÁI": o.trangThai,
-        "NGÀY OD": o.ngayOd instanceof Date ? o.ngayOd.toISOString().slice(0, 10) : String(o.ngayOd ?? ""),
+        "NGÀY OD": o.ngayOd instanceof Date ? o.ngayOd.toISOString().slice(0, 10) : (o.ngayOd ? String(o.ngayOd) : ""),
         _note: o.note ?? "",
       })),
     stock: stock.map((s) => ({

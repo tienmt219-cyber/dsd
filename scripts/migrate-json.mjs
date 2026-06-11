@@ -23,14 +23,15 @@ function norm(v) { return String(v ?? "").replace(/\.0$/, "").trim().toUpperCase
 function normName(s) { return String(s ?? "").normalize("NFC").replace(/\s+/g, " ").trim(); }
 
 function toISOStr(v) {
-  if (!v) return new Date().toISOString();
+  if (!v) return null; // keep empty dates as NULL, not today
   const s = String(v).trim();
+  if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return new Date(s).toISOString();
   try {
     const d = new Date(s);
     if (!isNaN(d.getTime())) return d.toISOString();
   } catch {}
-  return new Date().toISOString();
+  return null; // unparseable dates → NULL instead of today
 }
 
 function normalizeFb(url) {
