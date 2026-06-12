@@ -30,3 +30,14 @@ fi
 
 # Xoá backup cũ, giữ $KEEP bản gần nhất
 ls -1t "$BACKUP_DIR"/dev-*.db 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
+
+# Upload lên Google Drive nếu đã cấu hình rclone (remote tên "gdrive")
+if command -v rclone >/dev/null 2>&1 && rclone listremotes 2>/dev/null | grep -q "^gdrive:"; then
+  if rclone copy "$OUT" gdrive:dsd-backups/ 2>&1; then
+    echo "$(date -Iseconds) ☁️ Drive upload OK: dsd-backups/dev-$STAMP.db"
+    # Giữ 30 bản trên Drive, xoá bản cũ hơn 30 ngày
+    rclone delete gdrive:dsd-backups/ --min-age 30d 2>/dev/null
+  else
+    echo "$(date -Iseconds) ⚠️ Drive upload FAILED (backup VPS vẫn OK)"
+  fi
+fi
