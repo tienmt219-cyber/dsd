@@ -824,8 +824,7 @@ function App(){
       const postItems=customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}));
       const r=await POST({action:"batchMarkCK",items:postItems});
       if(r.error){msg("❌ CK lỗi: "+r.error);setBusy(false);return;}
-      customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
-      saveCkOverrides();
+      // Giữ ckOverrides — sync() tự xoá khi data server đã có 💰CK (chống GET cũ đè mất CK)
       msg(`✅ ${customerName} CK ¥${fmt(customerRev)} — đã lưu!`);
       setBusy(false);
       GET().then(fresh=>{if(fresh.success)sync(fresh);}).catch(()=>{});
