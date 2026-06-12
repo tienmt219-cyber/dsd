@@ -10,7 +10,7 @@
  *   node scripts/sync-from-sheets.mjs --cron   # for cron job (quiet output)
  * 
  * Can also be called from VPS cron:
- *   */10 * * * * cd /root/dsd && node scripts/sync-from-sheets.mjs --cron >> /var/log/dsd-sync.log 2>&1
+ *   Cron: every 10 min — cd /root/dsd && node scripts/sync-from-sheets.mjs --cron >> /var/log/dsd-sync.log 2>&1
  */
 import Database from "better-sqlite3";
 import path from "path";
