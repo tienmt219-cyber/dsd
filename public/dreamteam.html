@@ -827,7 +827,9 @@ function App(){
       customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
       saveCkOverrides();
       msg(`✅ ${customerName} CK ¥${fmt(customerRev)} — đã lưu!`);
-      try{const fresh=await GET();if(fresh.success)sync(fresh);}catch(e){}
+      setBusy(false);
+      GET().then(fresh=>{if(fresh.success)sync(fresh);}).catch(()=>{});
+      return;
     }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
@@ -846,7 +848,9 @@ function App(){
       if(r.error){msg("❌ "+r.error);setBusy(false);return;}
       if(r.unmarked===0){msg("⚠️ Không bỏ CK được");setBusy(false);return;}
       msg(`✅ ${customerName}: đã bỏ CK`);
-      try{const fresh=await GET();if(fresh.success)sync(fresh);}catch(e){}
+      setBusy(false);
+      GET().then(fresh=>{if(fresh.success)sync(fresh);}).catch(()=>{});
+      return;
     }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
