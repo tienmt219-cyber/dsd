@@ -691,10 +691,7 @@ function App(){
       if(r.autoStatus)extra=` 🟢 Hàng dư → ${r.autoStatus}`;
       if(r.autoCount>0)extra=` 🟢 ${r.autoCount} đơn auto từ hàng dư`;
       if(r.matched>0)extra=` (${r.matched} đơn → Về kho)`;
-      if(okMsg)msg(okMsg+extra);
-      setBusy(false);
-      if(r.data){sync(r.data);}else{GET().then(f=>{if(f.success)sync(f);}).catch(()=>{});}
-      return ok;}}
+      if(okMsg)msg(okMsg+extra);if(r.data)sync(r.data);else load(true);}}
     catch(e){msg("❌ "+e.message);load(true);}
     setBusy(false);return ok;
   },[msg,load,sync]);

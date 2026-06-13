@@ -131,7 +131,17 @@ async function verifyRow(rowIndex: number, verify?: { tenKhach?: string; maSP?: 
 
 // ── getFullData ──────────────────────────────────────────────
 
-async function getFullData() {
+function invalidateDataCache() { _dataCache = null; }
+let _dataCache: { data: Record<string, unknown>; ts: number } | null = null;
+
+async function getFullData(skipCache = false) {
+  if (!skipCache && _dataCache && Date.now() - _dataCache.ts < 500) return _dataCache.data;
+  const result = await _buildFullData();
+  _dataCache = { data: result, ts: Date.now() };
+  return result;
+}
+
+async function _buildFullData() {
   const [orders, stock, catalog, addresses, surplus, emsBatches] = await Promise.all([
     prisma.dtOrder.findMany({ orderBy: { rowIndex: "asc" } }),
     prisma.dtStock.findMany({ orderBy: { id: "asc" } }),
@@ -1030,11 +1040,7 @@ export async function POST(request: NextRequest) {
         return json({ error: `Unknown action: ${action}` });
     }
 
-    const needFullData = ["getOrders", "searchOrders"];
-    if (result.success && !needFullData.includes(action as string)) {
-      return json(result);
-    }
-
+    invalidateDataCache();
     const data = await getFullData();
     return json({ ...result, data });
   } catch (e: unknown) {
