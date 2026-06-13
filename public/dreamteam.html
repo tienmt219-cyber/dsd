@@ -541,7 +541,7 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
   const [editing,setEditing]=useState(false);
   const [val,setVal]=useState(String(value??""));
   const ref=useRef(null);
-  useEffect(()=>{setVal(String(value??""));},[value]);
+  useEffect(()=>{if(!editing)setVal(String(value??""));},[value,editing]);
   useEffect(()=>{if(editing&&ref.current){ref.current.focus();if(type!=="select")ref.current.select();}});
   const save=()=>{
     setEditing(false);
