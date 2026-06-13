@@ -1030,11 +1030,8 @@ export async function POST(request: NextRequest) {
         return json({ error: `Unknown action: ${action}` });
     }
 
-    const lightActions = [
-      "addOrder", "updateOrder", "editOrder", "markCK", "batchMarkCK", "batchUnmarkCK",
-      "saveAddress", "addCatalogItem", "updateCatalogItem",
-    ];
-    if (result.success && lightActions.includes(action as string)) {
+    const needFullData = ["getOrders", "searchOrders"];
+    if (result.success && !needFullData.includes(action as string)) {
       return json(result);
     }
 
