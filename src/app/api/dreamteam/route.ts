@@ -1030,14 +1030,12 @@ export async function POST(request: NextRequest) {
         return json({ error: `Unknown action: ${action}` });
     }
 
-    const heavyActions = [
-      "addStock", "softDelete", "deleteOrder", "bulkUpdateStatus", "shipItems",
-      "addSurplus", "shipEMSWithStock", "editEMSHistory", "deleteEMSHistory",
-      "markCK", "batchMarkCK", "batchUnmarkCK",
+    const lightActions = [
+      "addOrder", "updateOrder", "editOrder", "markCK", "batchMarkCK", "batchUnmarkCK",
+      "saveAddress", "addCatalogItem", "updateCatalogItem",
     ];
-    if (result.success && heavyActions.includes(action as string)) {
-      const data = await getFullData();
-      return json({ ...result, data });
+    if (result.success && lightActions.includes(action as string)) {
+      return json(result);
     }
 
     const data = await getFullData();
