@@ -1054,11 +1054,9 @@ export async function POST(request: NextRequest) {
     }
 
     const tAction = Date.now();
+    console.log(`[API] ${action}: parse=${tParse-t0}ms action=${tAction-tParse}ms total=${tAction-t0}ms`);
     invalidateDataCache();
-    const data = await getFullData();
-    const tData = Date.now();
-    console.log(`[API] ${action}: parse=${tParse-t0}ms action=${tAction-tParse}ms getFullData=${tData-tAction}ms total=${tData-t0}ms`);
-    return json({ ...result, data });
+    return json(result);
   } catch (e: unknown) {
     return json({ error: (e as Error).message ?? "Unknown error" });
   }
