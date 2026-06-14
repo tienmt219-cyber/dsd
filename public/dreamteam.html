@@ -119,16 +119,16 @@ const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"
 
 async function GET(){
   for(let retry=0;retry<2;retry++){
-    const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
+    const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
     try{const r=await fetch(API,{signal:c.signal,headers:{"x-api-key":API_KEY}});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("AUTH");}return j;}
     catch(e){clearTimeout(t);if(e.message==="AUTH")throw e;if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
   }
 }
 async function POST(b){
-  for(let retry=0;retry<3;retry++){
-    const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
+  for(let retry=0;retry<2;retry++){
+    const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
     try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("Phiên hết hạn — reload trang");}return j;}
-    catch(e){clearTimeout(t);if(e.message&&e.message.includes("hết hạn"))throw e;if(retry<2){await new Promise(r=>setTimeout(r,2000));continue;}throw new Error("Kết nối chậm — thử lại");}
+    catch(e){clearTimeout(t);if(e.message&&e.message.includes("hết hạn"))throw e;if(retry<1){await new Promise(r=>setTimeout(r,1000));continue;}throw new Error("Kết nối chậm — thử lại");}
   }
 }
 
@@ -678,7 +678,7 @@ function App(){
   const load=useCallback(async s=>{if(!s)setLoading(true);try{const d=await GET();if(d.success)sync(d);}catch(e){if(!s)msg("❌ "+e.message);}if(!s)setLoading(false);},[msg,sync]);
   useEffect(()=>{if(auth)load();},[auth,load]);
   const busyRef=useRef(false);
-  useEffect(()=>{busyRef.current=busy;},[busy]);
+  useEffect(()=>{busyRef.current=busy;if(busy){const t=setTimeout(()=>{setBusy(false);msg("⚠️ Quá lâu — đã mở khoá. Thử lại.");},15000);return()=>clearTimeout(t);}},[busy]);
   useEffect(()=>{if(!auth)return;const iv=setInterval(()=>{if(!busyRef.current)load(true);},60000);return()=>clearInterval(iv);},[auth,load]);
   // ★ Ctrl+N → thêm đơn, Ctrl+R → refresh, Esc → đóng modal
   useEffect(()=>{const h=e=>{if(e.ctrlKey&&e.key==="n"){e.preventDefault();setMAdd(true);}if(e.ctrlKey&&e.key==="r"){e.preventDefault();load();msg("🔄 Đang tải...");}if(e.key==="Escape"){setMAdd(false);setMCust(null);}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[load,msg]);
