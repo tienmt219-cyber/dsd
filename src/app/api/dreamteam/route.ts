@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// ── auth ────────────────────────────────────────────────────
+
+const DT_API_SECRET = process.env.DT_API_SECRET ?? "mam2026secret";
+
+function checkAuth(request: NextRequest): boolean {
+  const key = request.headers.get("x-api-key") || new URL(request.url).searchParams.get("key");
+  return key === DT_API_SECRET;
+}
+
 // ── helpers ──────────────────────────────────────────────────
 
 function norm(v: unknown): string {
@@ -227,7 +236,8 @@ async function _buildFullData() {
 
 // ── GET ──────────────────────────────────────────────────────
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!checkAuth(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const data = await getFullData();
     return NextResponse.json(data);
@@ -239,6 +249,7 @@ export async function GET() {
 // ── POST ─────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
+  if (!checkAuth(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     let body: Record<string, unknown>;
     const ct = request.headers.get("content-type") ?? "";
@@ -1054,7 +1065,7 @@ function json(obj: Record<string, unknown>) {
 
 // ══════ AI FUNCTIONS ══════
 
-const GEMINI_KEY = process.env.GEMINI_KEY ?? "AIzaSyDoabiBYK6T08k33o4fSvxS4DXlsyHOMG0";
+const GEMINI_KEY = process.env.GEMINI_KEY ?? "";
 const CLAUDE_KEY = process.env.CLAUDE_KEY ?? "";
 
 async function callParseOrderAI(body: Record<string, unknown>) {
