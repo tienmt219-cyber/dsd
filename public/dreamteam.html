@@ -117,6 +117,11 @@ const getAddr = (addrs, name, fb) => {
 const LT={bg:"#F8FAFC",sf:"#fff",tx:"#1E293B",dm:"#94A3B8",bd:"#EAEDF3",inp:"#F8FAFC",ac:"#7C3AED",ab:"#F3EEFF",pk:"#E8567F"};
 const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"#1E293B",ac:"#A78BFA",ab:"#1E1B4B",pk:"#F472B6"};
 
+function copyText(text){
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text);return;}
+  const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;left:-9999px";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
+}
+
 async function GET(){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
@@ -885,7 +890,7 @@ function App(){
     const shipLine=shipFee?`\n📮 Ship: ¥${fmt(shipFee)}`:"";
     const trackLine=tracking?`\n🚚 Mã vận đơn: ${tracking}`:"";
     const total=money+(Number(shipFee)||0);
-    navigator.clipboard?.writeText(`Hàng c đặt về rồi ạ\n\n${lines}${shipLine}\n\n💰 Tổng CK: ¥${fmt(total)}\n\n━━━━━━━━━━━━\n${bank}\n━━━━━━━━━━━━${trackLine}`);
+    copyText(`Hàng c đặt về rồi ạ\n\n${lines}${shipLine}\n\n💰 Tổng CK: ¥${fmt(total)}\n\n━━━━━━━━━━━━\n${bank}\n━━━━━━━━━━━━${trackLine}`);
     if(cust.fb)window.open(cust.fb,"_blank");
     msg(`📋 ${cust.name}: đã copy`);
   };
@@ -1068,7 +1073,7 @@ function App(){
               <button onClick={()=>{
                 const today=new Date().toLocaleDateString("vi-VN");
                 const rpt=`📊 BÁO CÁO ${today}\n\n📋 Đơn: ${active.length}\n👥 Khách: ${stats.cust}\n💰 DT: ¥${fmt(stats.rev)}\n📈 Lãi: ¥${fmt(stats.profit)}\n\n${ST.map(s=>`${s}: ${stats.byS[s]||0}`).join("\n")}\n\n🏆 Top SP:\n${stats.topSP.slice(0,3).map((p,i)=>`${i+1}. ${p.m} x${p.q}`).join("\n")}`;
-                navigator.clipboard?.writeText(rpt);msg("📋 Đã copy báo cáo!");
+                copyText(rpt);msg("📋 Đã copy báo cáo!");
               }} style={{marginTop:8,width:"100%",padding:6,borderRadius:6,border:"none",background:t.ab,color:t.ac,fontSize:10,fontWeight:600,cursor:"pointer"}}>📋 Copy báo cáo</button>
             </div>
           </div>
@@ -1117,10 +1122,10 @@ function App(){
                     safePost({action:"updateStatus",rowIndex:o._rowIndex,newStatus:newSt,verify:{tenKhach:name,maSP:String(o["Mã SP"]||"")}},`→ ${newSt}`);
                     // ★ Auto copy tin nhắn theo trạng thái
                     const msgs={"Chờ hàng":`${name} ơi em xác nhận đơn nha!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\nGiá: ¥${fmt(o["Giá sp"])}\nHàng sẽ về trong 7-14 ngày. Về kho em báo ${name} CK nhé! 💜`,"Về kho":`${name} ơi hàng về rồi!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\n💰 ¥${fmt(o["Giá sp"])}\n\n${bank}\nCK xong báo t nhé.`};
-                    if(msgs[newSt]){navigator.clipboard?.writeText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
+                    if(msgs[newSt]){copyText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
                   }} disabled={busy} style={{padding:"2px 3px",borderRadius:4,border:`1px solid ${SC[o["TRẠNG THÁI"]]||t.bd}30`,background:`${SC[o["TRẠNG THÁI"]]||"#999"}10`,color:SC[o["TRẠNG THÁI"]]||t.dm,fontSize:9,fontWeight:600,cursor:"pointer"}}>{ST.map(s=><option key={s}>{s}</option>)}</select></td>
                   <td style={{padding:"5px 2px",display:"flex",gap:2}}>
-                    <button onClick={()=>{navigator.clipboard?.writeText(`${o["Tên khách"]} | ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]} | ¥${fmt(o["Giá sp"])} | ${o["TRẠNG THÁI"]}`);msg("📋 Copied");}} title="Copy" style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>📋</button>
+                    <button onClick={()=>{copyText(`${o["Tên khách"]} | ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]} | ¥${fmt(o["Giá sp"])} | ${o["TRẠNG THÁI"]}`);msg("📋 Copied");}} title="Copy" style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>📋</button>
                     <button onClick={()=>setMEdit(o)} title="Sửa" style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>✏️</button>
                     <button onClick={()=>{if(!confirm("Xoá?"))return;safePost({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}},"Đã xoá");}} disabled={busy} style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>🗑</button>
                   </td>
@@ -1295,7 +1300,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
         </div>
         <div style={{display:"flex",gap:6}}>
           <button onClick={()=>doCK(c.items,c.name,c.rev)} disabled={busy} style={{flex:1,padding:"11px 8px",borderRadius:9,border:"none",background:"#16A34A",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 1px 4px rgba(22,163,74,.3)"}}>💰 Đã CK</button>
-          <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;navigator.clipboard?.writeText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:"11px 8px",borderRadius:9,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
+          <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;copyText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:"11px 8px",borderRadius:9,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
           <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.items.length} món của ${c.name} → Về kho?`))return;await doUnship(c.items);}} disabled={busy} style={{padding:8,borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:11,fontWeight:600,cursor:"pointer",opacity:busy?.5:1}} title="Hoàn tác → Về kho">↩</button>
         </div>
       </div>;})}
@@ -1504,7 +1509,7 @@ function ToolsTab({catalog,active,orders,stock,shipped,stats,bank,t,msg,safePost
       {templates.map((tpl,i)=><div key={i} style={{background:t.bg,borderRadius:8,padding:10,marginBottom:8,border:`1px solid ${t.bd}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
           <span style={{fontSize:12,fontWeight:600,color:t.tx}}>{tpl.name}</span>
-          <button onClick={()=>{navigator.clipboard?.writeText(tpl.text);msg(`📋 Đã copy: ${tpl.name}`);}} style={{padding:"3px 8px",borderRadius:4,border:"none",background:t.ac,color:"#fff",fontSize:10,cursor:"pointer"}}>📋 Copy</button>
+          <button onClick={()=>{copyText(tpl.text);msg(`📋 Đã copy: ${tpl.name}`);}} style={{padding:"3px 8px",borderRadius:4,border:"none",background:t.ac,color:"#fff",fontSize:10,cursor:"pointer"}}>📋 Copy</button>
         </div>
         <pre style={{fontSize:10,color:t.dm,whiteSpace:"pre-wrap",margin:0,lineHeight:1.4}}>{tpl.text}</pre>
       </div>)}
@@ -1569,7 +1574,7 @@ function ToolsTab({catalog,active,orders,stock,shipped,stats,bank,t,msg,safePost
           {stats.overdue>0&&<div style={{fontSize:11,color:"#DC2626",marginTop:6,fontWeight:600}}>⚠️ {stats.overdue} đơn quá 21 ngày!</div>}
         </div>
 
-        <button onClick={()=>{navigator.clipboard?.writeText(reportText);msg("📋 Đã copy báo cáo!");}} style={{width:"100%",padding:12,borderRadius:8,border:"none",background:t.ac,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Copy báo cáo</button>
+        <button onClick={()=>{copyText(reportText);msg("📋 Đã copy báo cáo!");}} style={{width:"100%",padding:12,borderRadius:8,border:"none",background:t.ac,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Copy báo cáo</button>
       </div>;
     })()}
   </div>;
@@ -1782,7 +1787,7 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
       return g.ma+" | "+g.size+" | "+g.color+" | SL: "+qty;
     }).join("\n");
     const total=list.reduce((s,g)=>{const ri=gzData.indexOf(g);return s+(customQty[ri]!==undefined?Number(customQty[ri]):g[qtyKey]);},0);
-    navigator.clipboard?.writeText("ĐẶT GZ:\n\n"+text+"\n\nTổng: "+total+" SP");
+    copyText("ĐẶT GZ:\n\n"+text+"\n\nTổng: "+total+" SP");
   };
 
   const itemsCD=gzData.filter(g=>g.chuaDat>0);
@@ -1935,7 +1940,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   const copyPacking=()=>{
     const lines=allLines.map(l=>`${l.ma} | ${l.size} | ${l.color} | x${l.qty}`);
     const txt=`📦 KIỆN EMS: ${emsCode||"_______________"}\n${"━".repeat(35)}\n\n${"STT".padEnd(4)}${"Mã SP".padEnd(10)}${"Size".padEnd(6)}${"Màu".padEnd(12)}${"SL"}\n${"─".repeat(35)}\n${allLines.map((l,i)=>`${String(i+1).padEnd(4)}${String(l.ma).padEnd(10)}${String(l.size).padEnd(6)}${String(l.color).padEnd(12)}${l.qty}`).join("\n")}\n${"─".repeat(35)}\nTổng: ${totalQty} SP · ${allLines.length} SKU\n${"━".repeat(35)}\n\n📅 ${new Date().toLocaleDateString("vi-VN")}\n🌸 Shop MAM`;
-    navigator.clipboard?.writeText(txt);
+    copyText(txt);
     msg("📋 Đã copy packing list");
   };
 
@@ -2195,7 +2200,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                     const w=window.open("","_blank","width=700,height=900");
                     if(w){w.document.write(pdfHtml);w.document.close();setTimeout(()=>w.print(),1000);}
                   }} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#DC2626",color:"#fff",fontSize:10,cursor:"pointer"}}>📄 In PDF</button>
-                  <button onClick={()=>{const txt=b.items.map(l=>`${l.sku} ${l.size||""} ${l.color||""} x${l.qty}`).join("\n");navigator.clipboard?.writeText(`📦 EMS: ${g.emsCode}\n${txt}\nTổng: ${b.totalQty} SP`);msg("📋 Copied");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:10,cursor:"pointer"}}>📋 Copy</button>
+                  <button onClick={()=>{const txt=b.items.map(l=>`${l.sku} ${l.size||""} ${l.color||""} x${l.qty}`).join("\n");copyText(`📦 EMS: ${g.emsCode}\n${txt}\nTổng: ${b.totalQty} SP`);msg("📋 Copied");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:10,cursor:"pointer"}}>📋 Copy</button>
                 </div>}
               </div>;
             })}
