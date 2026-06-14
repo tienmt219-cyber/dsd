@@ -250,6 +250,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   if (!checkAuth(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const t0 = Date.now();
   try {
     let body: Record<string, unknown>;
     const ct = request.headers.get("content-type") ?? "";
@@ -261,6 +262,7 @@ export async function POST(request: NextRequest) {
     }
     const { action } = body;
     let result: Record<string, unknown> = { success: true };
+    const tParse = Date.now();
 
     switch (action) {
       // ══════ addOrder + surplus auto-match ══════
@@ -1051,8 +1053,11 @@ export async function POST(request: NextRequest) {
         return json({ error: `Unknown action: ${action}` });
     }
 
+    const tAction = Date.now();
     invalidateDataCache();
     const data = await getFullData();
+    const tData = Date.now();
+    console.log(`[API] ${action}: parse=${tParse-t0}ms action=${tAction-tParse}ms getFullData=${tData-tAction}ms total=${tData-t0}ms`);
     return json({ ...result, data });
   } catch (e: unknown) {
     return json({ error: (e as Error).message ?? "Unknown error" });
