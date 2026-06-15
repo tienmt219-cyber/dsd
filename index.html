@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EMS Fee Calculator — Shop MAM</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#e0e0e0;--text2:#8a8f9d;--accent:#f0c040;--accent2:#40c8a0;--danger:#e05050;--mono:'Courier New',monospace}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:12px}
+.container{max-width:900px;margin:0 auto}
+h1{text-align:center;font-size:1.3rem;color:var(--accent);margin-bottom:4px}
+.subtitle{text-align:center;color:var(--text2);font-size:.8rem;margin-bottom:16px}
+.input-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+label{display:block;font-size:.85rem;color:var(--text2);margin-bottom:6px}
+textarea{width:100%;height:180px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:10px;font-family:var(--mono);font-size:.82rem;resize:vertical;line-height:1.5}
+textarea:focus{outline:none;border-color:var(--accent)}
+.rate-row{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.rate-row label{margin:0;white-space:nowrap}
+.rate-input{width:80px;background:var(--bg);color:var(--accent);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.95rem;text-align:center}
+.rate-input:focus{outline:none;border-color:var(--accent)}
+.rate-unit{color:var(--text2);font-size:.82rem}
+.btn-row{display:flex;gap:10px;margin-top:14px}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:active{opacity:.7}
+.btn-primary{background:var(--accent);color:#111}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-copy{background:var(--accent2);color:#111;padding:6px 14px;border:none;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn-copy:active{opacity:.7}
+.btn-copy.copied{background:#888;color:#fff}
+.tabs{display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border)}
+.tab{flex:1;padding:10px;text-align:center;font-size:.85rem;font-weight:600;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none;background:var(--card);border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:14px;overflow-x:auto}
+.tab-content.active{display:block}
+.result-section{margin-top:16px}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:var(--bg);color:var(--accent);padding:8px 6px;text-align:left;font-weight:600;border-bottom:2px solid var(--border);white-space:nowrap}
+td{padding:7px 6px;border-bottom:1px solid var(--border);vertical-align:top}
+.ems-code{font-family:var(--mono);font-size:.78rem;color:var(--accent2)}
+.channel-name{font-size:.75rem;color:var(--text2)}
+.money{text-align:right;white-space:nowrap;font-family:var(--mono)}
+.footer-row td{font-weight:700;border-top:2px solid var(--accent);color:var(--accent);padding-top:10px}
+.customer-block{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;position:relative}
+.customer-block pre{font-family:var(--mono);font-size:.8rem;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:var(--text)}
+.customer-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.customer-name{font-weight:700;color:var(--accent);font-size:.9rem}
+.copy-all-row{text-align:right;margin-bottom:12px}
+.error-msg{background:#3a1515;border:1px solid var(--danger);color:var(--danger);padding:10px;border-radius:8px;margin-top:12px;font-size:.85rem}
+.price-ref{font-size:.72rem;color:var(--text2);margin-top:10px;line-height:1.6}
+.price-ref b{color:var(--accent)}
+@media(max-width:600px){
+  body{padding:8px}
+  textarea{height:150px;font-size:.75rem}
+  table{font-size:.75rem}
+  th,td{padding:5px 4px}
+  .customer-block pre{font-size:.72rem}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📦 EMS Fee Calculator</h1>
+  <p class="subtitle">Shop MAM — Tính phí vận chuyển EMS Trung → Nhật</p>
+
+  <div class="input-section">
+    <label>Paste dữ liệu kiện hàng (mỗi dòng 1 kiện):</label>
+    <textarea id="rawInput" placeholder="576577  MELUNI  上海三EMS  EB859731205CN  13.16  14
+483131  MAM  上海三EMS  EB859664846CN  18.46  19
+483132  HOANG THUY  河北EMS  EB859671201CN  23.1  24
+644471  LIO  海运  CX915377314CN  29.28  30" spellcheck="false"></textarea>
+
+    <div class="rate-row">
+      <label>Tỷ giá:</label>
+      <input type="number" id="rateInput" class="rate-input" value="23.7" step="0.1" min="1">
+      <span class="rate-unit">¥ / 1 tệ</span>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="calculate()">Tính phí</button>
+      <button class="btn btn-danger" onclick="clearAll()">Xoá</button>
+    </div>
+
+    <div class="price-ref">
+      <b>Thượng Hải (3-7 ngày):</b> 11-16kg: 26.5 · 17-22kg: 25.5 · 23-30kg: 24.5 tệ/kg<br>
+      <b>Ngoại Tỉnh (7-14 ngày):</b> 11-16kg: 20.8 · 17-22kg: 19.8 · 23-30kg: 18.8 tệ/kg<br>
+      <b>Đường Biển (~30 ngày):</b> 13.5 tệ/kg + 90 tệ/kiện
+    </div>
+  </div>
+
+  <div id="resultSection" class="result-section" style="display:none">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(0)">Bảng tổng hợp</div>
+      <div class="tab" onclick="switchTab(1)">Copy báo khách</div>
+    </div>
+    <div id="tab0" class="tab-content active"></div>
+    <div id="tab1" class="tab-content"></div>
+  </div>
+
+  <div id="errorBox" class="error-msg" style="display:none"></div>
+</div>
+
+<script>
+const PACKING_FEE = 10;
+
+function getChannel(cn) {
+  if (cn.includes('上海')) return { name: 'Thượng Hải', type: 'shanghai' };
+  if (cn.includes('海运')) return { name: 'Đường Biển', type: 'sea' };
+  return { name: 'Ngoại Tỉnh', type: 'ngoaitinh' };
+}
+
+function getUnitPrice(type, kgRound) {
+  if (type === 'sea') return 13.5;
+  const rates = type === 'shanghai'
+    ? [[16,26.5],[22,25.5],[30,24.5]]
+    : [[16,20.8],[22,19.8],[30,18.8]];
+  for (const [max, price] of rates) {
+    if (kgRound <= max) return price;
+  }
+  return rates[rates.length - 1][1];
+}
+
+function calcFee(type, kgRound, rate) {
+  const unitPrice = getUnitPrice(type, kgRound);
+  if (type === 'sea') {
+    return (kgRound * 13.5 + 90 + PACKING_FEE) * rate;
+  }
+  return (kgRound * unitPrice + PACKING_FEE) * rate;
+}
+
+function formatYen(v) {
+  return '¥' + Math.round(v).toLocaleString('en-US');
+}
+
+function parseLine(line) {
+  const parts = line.trim().split(/\t+|\s{2,}/);
+  if (parts.length < 4) return null;
+
+  // Detect: if first part is purely digits → it's mã_khách
+  let idx = 0;
+  let customerCode = null;
+  if (/^\d+$/.test(parts[0])) {
+    customerCode = parts[0];
+    idx = 1;
+  }
+  const name = parts[idx];
+  const channelCN = parts[idx + 1];
+  const emsCode = parts[idx + 2];
+  const kgReal = parseFloat(parts[idx + 3]);
+  const kgRound = parseFloat(parts[idx + 4]);
+
+  if (!name || !channelCN || !emsCode || isNaN(kgRound)) return null;
+
+  return { customerCode, name: name.toUpperCase(), channelCN, emsCode, kgReal: kgReal || kgRound, kgRound };
+}
+
+function calculate() {
+  const raw = document.getElementById('rawInput').value.trim();
+  const rate = parseFloat(document.getElementById('rateInput').value) || 23.7;
+  const errorBox = document.getElementById('errorBox');
+  const resultSection = document.getElementById('resultSection');
+
+  errorBox.style.display = 'none';
+  resultSection.style.display = 'none';
+
+  if (!raw) {
+    errorBox.textContent = 'Vui lòng nhập dữ liệu kiện hàng.';
+    errorBox.style.display = 'block';
+    return;
+  }
+
+  const lines = raw.split('\n').filter(l => l.trim());
+  const parcels = [];
+  const errors = [];
+
+  lines.forEach((line, i) => {
+    const p = parseLine(line);
+    if (!p) {
+      errors.push(`Dòng ${i + 1}: không parse được — "${line.trim().substring(0, 60)}"`);
+    } else {
+      const ch = getChannel(p.channelCN);
+      p.channel = ch;
+      p.fee = calcFee(ch.type, p.kgRound, rate);
+      parcels.push(p);
+    }
+  });
+
+  if (parcels.length === 0) {
+    errorBox.textContent = 'Không tìm thấy kiện hàng hợp lệ.' + (errors.length ? '\n' + errors.join('\n') : '');
+    errorBox.style.display = 'block';
+    return;
+  }
+
+  // Group by customer name
+  const grouped = {};
+  const order = [];
+  parcels.forEach(p => {
+    if (!grouped[p.name]) {
+      grouped[p.name] = [];
+      order.push(p.name);
+    }
+    grouped[p.name].push(p);
+  });
+
+  renderTable(grouped, order, rate);
+  renderCopyBlocks(grouped, order);
+
+  resultSection.style.display = 'block';
+
+  if (errors.length) {
+    errorBox.innerHTML = errors.map(e => e).join('<br>');
+    errorBox.style.display = 'block';
+  }
+}
+
+function renderTable(grouped, order, rate) {
+  let totalParcels = 0;
+  let grandTotal = 0;
+
+  let html = '<table><thead><tr><th>Tên khách</th><th>Mã EMS · Kênh</th><th>Kg</th><th class="money">¥ Kiện</th><th class="money">Tổng ¥</th></tr></thead><tbody>';
+
+  order.forEach(name => {
+    const items = grouped[name];
+    const customerTotal = items.reduce((s, p) => s + p.fee, 0);
+    totalParcels += items.length;
+    grandTotal += customerTotal;
+
+    items.forEach((p, i) => {
+      html += '<tr>';
+      if (i === 0) html += `<td rowspan="${items.length}"><b>${name}</b></td>`;
+      html += `<td><span class="ems-code">${p.emsCode}</span><br><span class="channel-name">${p.channelCN} · ${p.channel.name}</span></td>`;
+      html += `<td>${p.kgRound}</td>`;
+      html += `<td class="money">${formatYen(p.fee)}</td>`;
+      if (i === 0) html += `<td rowspan="${items.length}" class="money" style="font-weight:700">${formatYen(customerTotal)}</td>`;
+      html += '</tr>';
+    });
+  });
+
+  html += `<tr class="footer-row"><td colspan="4">Tổng ${order.length} khách · ${totalParcels} kiện</td><td class="money">${formatYen(grandTotal)}</td></tr>`;
+  html += '</tbody></table>';
+
+  document.getElementById('tab0').innerHTML = html;
+}
+
+function renderCopyBlocks(grouped, order) {
+  const blocks = [];
+
+  order.forEach(name => {
+    const items = grouped[name];
+    let text = `【Phí ship】 ${name}\n`;
+    items.forEach((p, i) => {
+      text += `${i + 1}. ${p.emsCode} | ${p.channel.name} | ${p.kgRound}kg → ${formatYen(p.fee)}\n`;
+    });
+    if (items.length > 1) {
+      const total = items.reduce((s, p) => s + p.fee, 0);
+      text += `─────────────\nTổng: ${formatYen(total)}`;
+    } else {
+      text = text.trimEnd();
+    }
+    blocks.push({ name, text });
+  });
+
+  let allText = blocks.map(b => b.text).join('\n\n');
+
+  let html = '<div class="copy-all-row"><button class="btn-copy" onclick="copyText(this, `' + escapeTemplate(allText) + '`)">Copy tất cả</button></div>';
+
+  blocks.forEach(b => {
+    html += `<div class="customer-block"><div class="customer-header"><span class="customer-name">${b.name}</span><button class="btn-copy" onclick="copyText(this, \`${escapeTemplate(b.text)}\`)">Copy</button></div><pre>${escapeHtml(b.text)}</pre></div>`;
+  });
+
+  document.getElementById('tab1').innerHTML = html;
+}
+
+function escapeTemplate(s) {
+  return s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.tab-content').forEach((t, i) => t.classList.toggle('active', i === idx));
+}
+
+function clearAll() {
+  document.getElementById('rawInput').value = '';
+  document.getElementById('resultSection').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+}
+</script>
+</body>
+</html>
