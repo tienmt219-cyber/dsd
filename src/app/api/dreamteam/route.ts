@@ -1011,6 +1011,13 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      // ══════ Surplus delete ══════
+      case "deleteSurplus": {
+        await prisma.dtSurplus.delete({ where: { id: body.id as string } });
+        result = { success: true };
+        break;
+      }
+
       // ══════ AI functions — proxy to external APIs ══════
       case "parseOrderAI": {
         const aiResult = await callParseOrderAI(body);
