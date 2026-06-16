@@ -774,7 +774,7 @@ function App(){
   // ★ HÀNG DƯ — đọc từ tab HÀNG DƯ (không tính toán)
   const surplusData=useMemo(()=>{
     return surplus.filter(s=>Number(s["SL dư"]||0)>0).map(s=>({
-      id:s.id,ma:s["Mã SP"],sz:s["Size"],cl:s["Color"],
+      id:s._rowIndex,ma:s["Mã SP"],sz:s["Size"],cl:s["Color"],
       sl:Number(s["SL dư"]||0),tt:s["Trạng thái"]||""
     }));
   },[surplus]);
