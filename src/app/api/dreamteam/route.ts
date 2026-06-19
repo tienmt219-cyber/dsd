@@ -468,7 +468,8 @@ export async function POST(request: NextRequest) {
 
         let returnedQty = 0;
         if (qty > 0 && maSP) {
-          await addOrUpdateSurplus(maSP, size, color, qty, "Về kho");
+          const surplusTT = (oldStatus === "Về kho" || oldStatus === "Đang ship") ? "Về kho" : "Chờ hàng";
+          await addOrUpdateSurplus(maSP, size, color, qty, surplusTT);
           returnedQty = qty;
         }
         result = { success: true, returned: returnedQty };
