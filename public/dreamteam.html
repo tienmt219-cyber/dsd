@@ -1721,7 +1721,7 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
             <InlineCell value={s.sz} field="sz" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px"}}/>
             <InlineCell value={s.cl} field="cl" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px"}}/>
             <InlineCell value={s.sl} field="sl" type="number" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px",fontWeight:700,color:"#16A34A"}}/>
-            <td style={{padding:"7px 8px"}}><span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:s.tt==="Về kho"?"#D1FAE5":"#FEF3C7",color:s.tt==="Về kho"?"#065F46":"#92400E",fontWeight:600}}>{s.tt}</span></td>
+            <td style={{padding:"7px 8px"}}><select disabled={busy} value={s.tt} onChange={e=>saveSurplus("trangThai",e.target.value)} style={{fontSize:10,padding:"2px 4px",borderRadius:4,border:"1px solid #D1FAE5",background:s.tt==="Về kho"?"#D1FAE5":"#FEF3C7",color:s.tt==="Về kho"?"#065F46":"#92400E",fontWeight:600,cursor:"pointer"}}>{["Về kho","Chờ hàng","Đang ship"].map(o=><option key={o} value={o}>{o}</option>)}</select></td>
             <td style={{padding:"7px 4px",textAlign:"center"}}><button disabled={busy} onClick={()=>{if(confirm(`Xóa hàng dư ${s.ma} ${s.sz} ${s.cl} x${s.sl}?`))safePost({action:"deleteSurplus",id:s.id},"🗑️ Đã xóa hàng dư");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#EF4444",opacity:busy?0.4:0.7,padding:2}}>🗑️</button></td>
           </tr>;})}</tbody>
         </table>
