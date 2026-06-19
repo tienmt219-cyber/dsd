@@ -468,10 +468,10 @@ export async function POST(request: NextRequest) {
 
         let returnedQty = 0;
         if (qty > 0 && maSP) {
-          if (oldStatus === "Về kho") {
+          if (oldStatus === "Về kho" || oldStatus === "Đang ship") {
             await addOrUpdateSurplus(maSP, size, color, qty, "Về kho");
             returnedQty = qty;
-          } else if (oldStatus === "Chờ hàng" || oldStatus === "Đang ship") {
+          } else if (oldStatus === "Chờ hàng") {
             await addOrUpdateSurplus(maSP, size, color, qty, "Chờ hàng");
             returnedQty = qty;
           }
