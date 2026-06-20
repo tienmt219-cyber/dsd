@@ -468,7 +468,7 @@ export async function POST(request: NextRequest) {
 
         let returnedQty = 0;
         if (qty > 0 && maSP) {
-          await addOrUpdateSurplus(maSP, size, color, qty, "Về kho");
+          await addOrUpdateSurplus(maSP, size, color, qty, oldStatus);
           returnedQty = qty;
         }
         result = { success: true, returned: returnedQty };
