@@ -36,7 +36,7 @@ const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 const API = "/api/dreamteam";
 let API_KEY = localStorage.getItem("dt_api_key") || "";
-const BANK_DEFAULT = "🇻🇳 STK Việt Nam:\nNgân hàng: Techcombank\nSTK: 8109030991196\nTên: TRINH THI PHUONG\n\n💜 PayPay: 09030991196";
+const BANK_DEFAULT = "🇯🇵 STK Nhật:\nNgân hàng: GMO あおぞらネット銀行 (ジ)\nChi nhánh: 法人営業部(101)(ホ)\nSTK: 2573738\nTên: ド ) キン\n\n🇻🇳 STK Việt Nam:\nNgân hàng: Techcombank\nSTK: 8109030991196\nTên: TRINH THI PHUONG\n\n💜 PayPay: 09030991196";
 const ST = ["CHƯA ĐẶT","Chờ hàng","Đang ship","Về kho","Đã gửi"];
 const SC = {"CHƯA ĐẶT":"#94A3B8","Chờ hàng":"#D97706","Đang ship":"#7C3AED","Về kho":"#0D9488","Đã gửi":"#16A34A","Đã xoá":"#DC2626"};
 // ★ Chi phí cố định/SP (JPY) — sửa ở đây khi thay đổi
