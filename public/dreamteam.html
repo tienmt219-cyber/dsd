@@ -2015,7 +2015,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
       if(String(g.emsCode||"").toLowerCase().includes(q))return true;
       // Match mã SP / size / color trong bất kỳ đợt nào
       return g.batches.some(b=>b.items.some(it=>
-        String(it.sku||"").toLowerCase().includes(q)
+        String(it.ma||it.sku||"").toLowerCase().includes(q)
         ||String(it.size||"").toLowerCase().includes(q)
         ||String(it.color||"").toLowerCase().includes(q)
       ));
@@ -2026,7 +2026,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   const itemMatches=(it)=>{
     const q=searchHist.trim().toLowerCase();
     if(!q)return false;
-    return String(it.sku||"").toLowerCase().includes(q)
+    return String(it.ma||it.sku||"").toLowerCase().includes(q)
       ||String(it.size||"").toLowerCase().includes(q)
       ||String(it.color||"").toLowerCase().includes(q);
   };
@@ -2176,7 +2176,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                     const hit=itemMatches(it); // ★ v3.2: highlight nếu match search
                     return <tr key={j} style={{borderBottom:`1px solid ${t.bd}22`,background:hit?"#FEF9C3":"transparent"}}>
                       <td style={{padding:"2px 4px"}}>{img?<img src={img} style={{width:28,height:28,objectFit:"cover",borderRadius:3}} onError={e=>e.target.style.display="none"}/>:<span style={{fontSize:8,color:t.dm}}>📷</span>}</td>
-                      <td style={{padding:"2px 4px",fontWeight:hit?800:600,color:hit?"#854D0E":t.ac}}>{it.sku}</td>
+                      <td style={{padding:"2px 4px",fontWeight:hit?800:600,color:hit?"#854D0E":t.ac}}>{it.ma||it.sku||""}</td>
                       <td style={{padding:"2px 4px",color:t.tx}}>{it.size}</td>
                       <td style={{padding:"2px 4px",color:t.tx}}>{it.color}</td>
                       <td style={{padding:"2px 4px",textAlign:"right",fontWeight:600}}>{it.qty}</td>
