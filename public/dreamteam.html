@@ -1123,7 +1123,61 @@ function App(){
             <span style={{fontSize:10,color:"#D97706"}}>¥{fmt(filtered.filter(o=>sel.has(o._rowIndex)).reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0))}</span>
             {ST.map(s=><button key={s} onClick={()=>{const items=filtered.filter(o=>sel.has(o._rowIndex)).map(o=>({rowIndex:o._rowIndex,tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||""),newStatus:s}));safePost({action:"bulkUpdateStatus",items},`${items.length} → ${s}`);}} disabled={busy} style={{padding:"2px 6px",borderRadius:4,border:"none",background:`${SC[s]}15`,color:SC[s],fontSize:9,fontWeight:600,cursor:"pointer"}}>{s}</button>)}
           </div>}
-          <div style={{background:t.sf,borderRadius:10,border:`1px solid ${t.bd}`,overflow:"hidden"}}>
+          {/* Summary */}
+          <div style={{display:"flex",gap:8,marginBottom:10,padding:"10px 14px",background:t.sf,borderRadius:14,border:`1px solid ${t.bd}`,flexWrap:"wrap",alignItems:"center"}}>
+            <span style={{fontSize:12,color:t.dm}}><b style={{color:t.ac}}>{filtered.length}</b> đơn</span>
+            <span style={{fontSize:12,color:t.dm}}><b style={{color:t.tx}}>{filtTotals.qty}</b> sp</span>
+            <span style={{fontSize:12,color:t.dm}}><b style={{color:"#D97706"}}>¥{fmt(filtTotals.rev)}</b></span>
+            <span style={{flex:1}}/>
+            <span style={{fontSize:11,color:t.dm}}>{filtTotals.cust} khách</span>
+            <button onClick={()=>exportCSV(filtered)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,fontSize:10,cursor:"pointer"}}>📥</button>
+          </div>
+
+          {/* Mobile Card View */}
+          {mob&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {filtered.map(o=>{const isS=sel.has(o._rowIndex);const days=daysAgo(String(o["NGÀY OD"]||"").slice(0,10));const over=!["Đã gửi","Về kho"].includes(o["TRẠNG THÁI"])&&days>21;const dayColor=days<=7?"#16A34A":days<=21?"#D97706":"#DC2626";const stColor=SC[o["TRẠNG THÁI"]]||"#999";
+              return <div key={o._rowIndex} style={{background:isS?t.ab:t.sf,borderRadius:14,border:`1.5px solid ${isS?t.ac:over?"#FECACA":t.bd}`,padding:"12px 14px",position:"relative",overflow:"hidden"}}>
+                <div style={{position:"absolute",top:0,left:0,width:4,height:"100%",background:stColor}}/>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingLeft:6}}>
+                  <input type="checkbox" checked={isS} onChange={()=>setSel(p=>{const n=new Set(p);n.has(o._rowIndex)?n.delete(o._rowIndex):n.add(o._rowIndex);return n;})} style={{width:18,height:18,accentColor:t.ac}}/>
+                  <div style={{flex:1,cursor:"pointer"}} onClick={()=>setCustFilter(String(o["Tên khách"]||"").trim())}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <Avatar name={o["Tên khách"]} fb={o["Link fb"]} size={28} dup={dupNames[String(o["Tên khách"]||"").trim()]}/>
+                      <span style={{fontWeight:700,fontSize:14,color:t.tx}}>{o["Tên khách"]}</span>
+                    </div>
+                  </div>
+                  <select value={o["TRẠNG THÁI"]} onChange={e=>{
+                    const newSt=e.target.value;const name=String(o["Tên khách"]||"").trim();
+                    safePost({action:"updateStatus",rowIndex:o._rowIndex,newStatus:newSt,verify:{tenKhach:name,maSP:String(o["Mã SP"]||"")}},`→ ${newSt}`);
+                    const msgs={"Chờ hàng":`${name} ơi em xác nhận đơn nha!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\nGiá: ¥${fmt(o["Giá sp"])}\nHàng sẽ về trong 7-14 ngày. Về kho em báo ${name} CK nhé! 💜`,"Về kho":`${name} ơi hàng về rồi!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\n💰 ¥${fmt(o["Giá sp"])}\n\n${bank}\nCK xong báo t nhé.`};
+                    if(msgs[newSt]){copyText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
+                  }} disabled={busy} style={{padding:"6px 8px",borderRadius:8,border:`1.5px solid ${stColor}30`,background:`${stColor}10`,color:stColor,fontSize:11,fontWeight:700,cursor:"pointer"}}>{ST.map(s=><option key={s}>{s}</option>)}</select>
+                </div>
+                <div style={{paddingLeft:6,marginBottom:6}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:t.ac,fontSize:13}}>{o["Mã SP"]}</span>
+                    <span style={{fontSize:12,color:t.tx}}>{o["Tên Sp"]}</span>
+                  </div>
+                  <div style={{display:"flex",gap:6,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>
+                    <span style={{fontSize:11,color:t.dm,background:t.bg,padding:"3px 10px",borderRadius:8}}>{o["SIZE"]}</span>
+                    <span style={{fontSize:11,color:t.dm,background:t.bg,padding:"3px 10px",borderRadius:8}}>{o["COLOR"]}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:t.tx}}>x{o["Số lượng"]}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:"#D97706"}}>¥{fmt(o["Giá sp"])}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,paddingLeft:6,paddingTop:8,borderTop:`1px solid ${t.bd}`,marginTop:4}}>
+                  {days>0&&<span style={{fontSize:10,fontWeight:700,color:dayColor,background:dayColor+"12",padding:"3px 8px",borderRadius:6}}>{days} ngày</span>}
+                  {o["TRẠNG THÁI"]==="Đã gửi"&&<span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,background:(o._note||"").includes("💰CK")?"#D1FAE5":"#FEE2E2",color:(o._note||"").includes("💰CK")?"#065F46":"#DC2626"}}>{(o._note||"").includes("💰CK")?"✅ CK":"💳 Chưa CK"}</span>}
+                  <span style={{flex:1}}/>
+                  <button onClick={()=>{copyText(`${o["Tên khách"]} | ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]} | ¥${fmt(o["Giá sp"])} | ${o["TRẠNG THÁI"]}`);msg("📋 Copied");}} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,fontSize:11,cursor:"pointer"}}>📋</button>
+                  <button onClick={()=>setMEdit(o)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,fontSize:11,cursor:"pointer"}}>✏️</button>
+                  <button onClick={()=>{if(!confirm("Xoá?"))return;safePost({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}},"Đã xoá");}} disabled={busy} style={{padding:"6px 10px",borderRadius:8,border:`1px solid #FECACA`,background:"#FEF2F2",fontSize:11,cursor:"pointer",color:"#DC2626"}}>🗑</button>
+                </div>
+              </div>;})}
+          </div>}
+
+          {/* Desktop Table View */}
+          {!mob&&<div style={{background:t.sf,borderRadius:10,border:`1px solid ${t.bd}`,overflow:"hidden"}}>
             <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead><tr style={{borderBottom:`2px solid ${t.bd}`}}>
                 <th style={{padding:"7px 4px",width:24}}><input type="checkbox" checked={sel.size===filtered.length&&filtered.length>0} onChange={()=>{sel.size===filtered.length?setSel(new Set()):setSel(new Set(filtered.map(o=>o._rowIndex)));}}/></th>
@@ -1162,7 +1216,7 @@ function App(){
               </tr></tfoot>
             </table></div>
           </div>
-          <div style={{fontSize:10,color:t.dm,marginTop:4}}>💡 Bấm tên = lọc · Double-click tên = sửa · Bấm ô = sửa trực tiếp · Enter = lưu · Esc = huỷ</div>
+          {!mob&&<div style={{fontSize:10,color:t.dm,marginTop:4}}>💡 Bấm tên = lọc · Double-click tên = sửa · Bấm ô = sửa trực tiếp · Enter = lưu · Esc = huỷ</div>}
         </div>}
 
         {/* ★ ĐẶT GZ — gom đơn + bulk update */}
