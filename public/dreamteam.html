@@ -1106,18 +1106,17 @@ function App(){
         {/* ORDERS */}
         {tab==="orders"&&<div>
           <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-            <input value={search} onChange={e=>{setSearch(e.target.value);setCustFilter("");}} placeholder="🔍 Tìm..." style={{flex:1,minWidth:120,padding:"7px 10px",border:`1.5px solid ${t.bd}`,borderRadius:8,fontSize:12,background:t.sf,color:t.tx}}/>
-            <input type="date" value={df} onChange={e=>setDf(e.target.value)} style={{padding:6,border:`1.5px solid ${t.bd}`,borderRadius:8,fontSize:10,background:t.sf,color:t.tx,width:110}}/>
-            <input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{padding:6,border:`1.5px solid ${t.bd}`,borderRadius:8,fontSize:10,background:t.sf,color:t.tx,width:110}}/>
-            <button onClick={()=>setMAdd(true)} title="Ctrl+N" style={{padding:"7px 12px",borderRadius:8,border:"none",background:t.ac,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>+</button>
-            <button onClick={()=>exportCSV(filtered)} title="Export CSV" style={{padding:"7px 10px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,fontSize:11,cursor:"pointer"}}>📥</button>
+            <input value={search} onChange={e=>{setSearch(e.target.value);setCustFilter("");}} placeholder="🔍 Tìm tên, SP, mã..." style={{flex:1,minWidth:140,padding:"10px 14px",border:`1.5px solid ${t.bd}`,borderRadius:12,fontSize:13,background:t.sf,color:t.tx}}/>
+            {!mob&&<input type="date" value={df} onChange={e=>setDf(e.target.value)} style={{padding:8,border:`1.5px solid ${t.bd}`,borderRadius:10,fontSize:11,background:t.sf,color:t.tx,width:120}}/>}
+            {!mob&&<input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{padding:8,border:`1.5px solid ${t.bd}`,borderRadius:10,fontSize:11,background:t.sf,color:t.tx,width:120}}/>}
+            <button onClick={()=>setMAdd(true)} title="Ctrl+N" style={{padding:"10px 16px",borderRadius:12,border:"none",background:t.ac,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 2px 8px rgba(99,102,241,.2)"}}>+</button>
           </div>
           {custFilter&&<div style={{background:"#FFFBEB",borderRadius:8,padding:"5px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
             <span style={{fontSize:11,color:"#92400E"}}>👤 {custFilter}</span>
             <button onClick={()=>setCustFilter("")} style={{border:"none",background:"#FDE68A",borderRadius:4,padding:"1px 6px",fontSize:10,cursor:"pointer",color:"#92400E"}}>✕ Xoá lọc</button>
           </div>}
-          <div style={{display:"flex",gap:3,marginBottom:8,overflowX:"auto"}}>
-            {["Tất cả",...ST].map(s=><button key={s} onClick={()=>setFilt(s)} style={{padding:"5px 8px",borderRadius:6,border:"none",fontSize:10,fontWeight:600,cursor:"pointer",background:filt===s?t.ac:t.sf,color:filt===s?"#fff":t.dm,whiteSpace:"nowrap"}}>{s}</button>)}
+          <div style={{display:"flex",gap:4,marginBottom:10,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
+            {["Tất cả",...ST].map(s=>{const cnt=s==="Tất cả"?filtered.length:(stats.byS[s]||0);return <button key={s} onClick={()=>setFilt(s)} style={{padding:mob?"8px 12px":"6px 10px",borderRadius:10,border:filt===s?"none":`1.5px solid ${t.bd}`,fontSize:mob?12:11,fontWeight:600,cursor:"pointer",background:filt===s?t.ac:t.sf,color:filt===s?"#fff":t.dm,whiteSpace:"nowrap",boxShadow:filt===s?"0 2px 8px rgba(99,102,241,.2)":"none"}}>{s}{cnt>0?` (${cnt})`:""}</button>})}
           </div>
           {sel.size>0&&<div style={{background:t.ab,borderRadius:8,padding:"5px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
             <b style={{color:t.ac,fontSize:11}}>{sel.size} đơn</b>
