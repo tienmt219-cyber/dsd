@@ -467,8 +467,9 @@ export async function POST(request: NextRequest) {
         await prisma.dtOrder.update({ where: { rowIndex: ri }, data: { trangThai: "Đã xoá" } });
 
         let returnedQty = 0;
-        if (qty > 0 && maSP) {
-          await addOrUpdateSurplus(maSP, size, color, qty, oldStatus);
+        if (qty > 0 && maSP && oldStatus !== "CHƯA ĐẶT") {
+          const surplusTT = oldStatus === "Chờ hàng" ? "Chờ hàng" : "Về kho";
+          await addOrUpdateSurplus(maSP, size, color, qty, surplusTT);
           returnedQty = qty;
         }
         result = { success: true, returned: returnedQty };
