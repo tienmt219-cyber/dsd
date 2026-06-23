@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#6366F1">
+<meta name="theme-color" content="#7C3AED">
 <title>Dream Team</title>
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -12,32 +12,21 @@
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone@7.27.5/babel.min.js"></script>
 <style>
-body{margin:0;padding:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-text-size-adjust:100%}
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-text-size-adjust:100%}
 button,input,select,textarea{font-family:inherit}
-button{-webkit-tap-highlight-color:transparent;transition:all .15s ease;touch-action:manipulation}
-button:active:not(:disabled){transform:scale(.97)}
-button:disabled{opacity:.5}
-input:focus,select:focus,textarea:focus{outline:none;border-color:rgba(99,102,241,.5)!important;box-shadow:0 0 0 3px rgba(99,102,241,.12)}
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-thumb{background:rgba(120,120,140,.25);border-radius:10px}
+button{-webkit-tap-highlight-color:transparent;transition:transform .12s ease,filter .15s ease,opacity .15s ease;touch-action:manipulation}
+button:active:not(:disabled){transform:scale(.96);filter:brightness(.93)}
+button:disabled{opacity:.55}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(124,58,237,.35);outline-offset:-1px}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(120,120,140,.35);border-radius:3px}
 ::-webkit-scrollbar-track{background:transparent}
-@keyframes dtToastIn{from{opacity:0;transform:translateX(-50%) translateY(-16px) scale(.95)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+@keyframes dtToastIn{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 @keyframes dtFadeIn{from{opacity:0}to{opacity:1}}
-@keyframes dtPopIn{from{opacity:0;transform:scale(.92) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes dtSlideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
-@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-.dt-toast{animation:dtToastIn .25s cubic-bezier(.34,1.56,.64,1)}
-.dt-overlay{animation:dtFadeIn .2s ease-out}
-.dt-pop{animation:dtPopIn .25s cubic-bezier(.34,1.56,.64,1)}
-.dt-card{border-radius:16px;overflow:hidden;transition:box-shadow .2s ease}
-.dt-card:active{box-shadow:none}
-.dt-btn{border:none;border-radius:10px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:all .15s ease}
-.dt-btn:hover{filter:brightness(1.05)}
-.dt-btn:active{transform:scale(.97)}
-.dt-input{border-radius:10px;padding:10px 14px;font-size:14px;border:1.5px solid transparent;transition:all .15s ease}
-@keyframes spin{to{transform:rotate(360deg)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes dtPopIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.dt-toast{animation:dtToastIn .22s ease-out}
+.dt-overlay{animation:dtFadeIn .18s ease-out}
+.dt-pop{animation:dtPopIn .2s ease-out}
 </style>
 </head>
 <body>
@@ -125,8 +114,8 @@ const getAddr = (addrs, name, fb) => {
   // Ưu tiên 3: plain name (data cũ chưa có fb)
   return addrs[n] || null;
 };
-const LT={bg:"#F1F5F9",sf:"#fff",tx:"#0F172A",dm:"#64748B",bd:"#E2E8F0",inp:"#F8FAFC",ac:"#6366F1",ab:"#EEF2FF",pk:"#EC4899",gd:"linear-gradient(135deg,#6366F1,#8B5CF6)"};
-const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"#1E293B",ac:"#818CF8",ab:"#1E1B4B",pk:"#F472B6",gd:"linear-gradient(135deg,#818CF8,#A78BFA)"};
+const LT={bg:"#F8FAFC",sf:"#fff",tx:"#1E293B",dm:"#94A3B8",bd:"#EAEDF3",inp:"#F8FAFC",ac:"#7C3AED",ab:"#F3EEFF",pk:"#E8567F"};
+const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"#1E293B",ac:"#A78BFA",ab:"#1E1B4B",pk:"#F472B6"};
 
 function copyText(text){
   if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text);return;}
@@ -150,13 +139,13 @@ async function POST(b){
 
 function Modal({open,onClose,title,children,t}){
   if(!open)return null;
-  return <div onClick={onClose} className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center",padding:0}}>
-    <div onClick={e=>e.stopPropagation()} className="dt-pop" style={{background:t.sf,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:520,maxHeight:"92vh",overflow:"auto",boxShadow:"0 -10px 50px rgba(0,0,0,.2)"}}>
-      <div style={{padding:"16px 20px",borderBottom:`1px solid ${t.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:t.sf,borderRadius:"20px 20px 0 0",zIndex:2}}>
-        <h3 style={{margin:0,fontSize:16,fontWeight:700,color:t.tx}}>{title}</h3>
-        <button onClick={onClose} style={{width:32,height:32,borderRadius:10,border:"none",background:t.bg,cursor:"pointer",fontSize:14,color:t.dm,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+  return <div onClick={onClose} className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(4px)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div onClick={e=>e.stopPropagation()} className="dt-pop" style={{background:t.sf,borderRadius:20,width:"100%",maxWidth:520,maxHeight:"90vh",overflow:"auto",border:`1px solid ${t.bd}`,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
+      <div style={{padding:"14px 20px",borderBottom:`1px solid ${t.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:t.sf,borderRadius:"20px 20px 0 0",zIndex:2}}>
+        <h3 style={{margin:0,fontSize:15,fontWeight:700,color:t.tx}}>{title}</h3>
+        <button onClick={onClose} style={{width:28,height:28,borderRadius:8,border:"none",background:t.bd,cursor:"pointer",fontSize:13,color:t.dm}}>✕</button>
       </div>
-      <div style={{padding:"16px 20px",paddingBottom:32}}>{children}</div>
+      <div style={{padding:"16px 20px"}}>{children}</div>
     </div>
   </div>;
 }
@@ -206,7 +195,7 @@ function EditForm({order,catalog,safePost,onDone,t,msg}){
     <div style={{marginBottom:10}}><label style={{fontSize:10,color:t.dm,fontWeight:600}}>Link FB</label><input value={f.linkFb} onChange={e=>setF({...f,linkFb:e.target.value})} onBlur={e=>setF({...f,linkFb:cleanFB(e.target.value)})} style={inp}/></div>
     <div style={{display:"flex",gap:8}}>
       <button onClick={onDone} style={{flex:1,padding:12,borderRadius:12,border:`1px solid ${t.bd}`,background:t.sf,color:t.dm,fontSize:14,fontWeight:700,cursor:"pointer"}}>Huỷ</button>
-      <button onClick={doSave} style={{flex:2,padding:12,borderRadius:12,border:"none",background:t.gd||"linear-gradient(135deg,#6366F1,#8B5CF6)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>💾 Lưu thay đổi</button>
+      <button onClick={doSave} style={{flex:2,padding:12,borderRadius:12,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer"}}>💾 Lưu thay đổi</button>
     </div>
   </div>;
 }
@@ -947,55 +936,42 @@ function App(){
   const NAV=[{id:"dash",icon:"📊",l:"Dashboard"},{id:"orders",icon:"📋",l:"Đơn",n:active.length},{id:"gz",icon:"🏭",l:"Đặt GZ",n:gzCounts.cd},{id:"ems",icon:"✈️",l:"EMS",n:gzCounts.ch||""},{id:"ship",icon:"🚚",l:"Chờ gửi",n:stats.byS["Về kho"]||0},{id:"stock",icon:"📦",l:"Kho",n:stock.length},{id:"product",icon:"🏷️",l:"SP",n:catalog.length},{id:"tools",icon:"🛠",l:"Tools"},{id:"history",icon:"💳",l:chuaCKcount>0?`CK(${chuaCKcount})`:"Đã gửi",n:chuaCKcount||shipped.length}];
 
   return <div style={{display:"flex",minHeight:"100vh",background:t.bg,fontFamily:"system-ui,-apple-system,sans-serif",flexDirection:mob?"column":"row"}}>
-    <style>{`*{box-sizing:border-box;margin:0;padding:0}input,select,button{font-family:inherit}input:focus,select:focus{outline:none}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${t.bd};border-radius:2px}[style*="overflowX"]::-webkit-scrollbar{display:none}`}</style>
-    {busy&&<div className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.25)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}><div className="dt-pop" style={{background:t.sf,padding:"20px 32px",borderRadius:16,fontSize:14,fontWeight:600,color:t.tx,boxShadow:"0 20px 60px rgba(0,0,0,.15)",display:"flex",alignItems:"center",gap:10}}><div style={{width:20,height:20,border:`3px solid ${t.bd}`,borderTopColor:t.ac,borderRadius:"50%",animation:"spin .6s linear infinite"}}/>Đang xử lý...</div></div>}
-    {toast&&<div className="dt-toast" style={{position:"fixed",top:mob?12:20,left:"50%",transform:"translateX(-50%)",background:t.sf,padding:"12px 24px",borderRadius:14,fontSize:13,fontWeight:600,zIndex:300,boxShadow:"0 12px 40px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.08)",border:`1px solid ${t.bd}`,color:t.tx,maxWidth:"calc(100vw - 32px)",backdropFilter:"blur(12px)"}}>{toast}</div>}
+    <style>{`*{box-sizing:border-box;margin:0;padding:0}input,select,button{font-family:inherit}input:focus,select:focus{outline:none}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${t.bd};border-radius:2px}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
+    {busy&&<div className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.2)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}><div className="dt-pop" style={{background:t.sf,padding:"16px 28px",borderRadius:14,fontSize:14,fontWeight:600,color:t.tx,boxShadow:"0 8px 30px rgba(0,0,0,.15)"}}>⏳ Đang xử lý...</div></div>}
+    {toast&&<div className="dt-toast" style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:t.sf,padding:"11px 22px",borderRadius:12,fontSize:13.5,fontWeight:600,zIndex:300,boxShadow:"0 8px 30px rgba(0,0,0,.18)",border:`1px solid ${t.bd}`,color:t.tx,maxWidth:"calc(100vw - 32px)"}}>{toast}</div>}
     <Modal open={mAdd} onClose={()=>setMAdd(false)} title="✏️ Tạo đơn" t={t}><AddForm orders={active} catalog={catalog} addrs={addrs} surplusData={surplusData} safePost={safePost} onAdd={o=>{safePost({action:"addOrder",order:o},"Tạo đơn!");}} t={t}/></Modal>
     <Modal open={!!mCust} onClose={()=>setMCust(null)} title={`👤 ${mCust?.name||""}`} t={t}>{mCust&&<CustProfile name={mCust.name} fb={mCust.fb} orders={active} addrs={addrs} safePost={safePost} msg={msg} t={t}/>}</Modal>
     <Modal open={!!mEdit} onClose={()=>setMEdit(null)} title="✏️ Sửa đơn" t={t}>{mEdit&&<EditForm order={mEdit} catalog={catalog} safePost={safePost} onDone={()=>setMEdit(null)} t={t} msg={msg}/>}</Modal>
 
-    {!mob&&<div style={{width:190,background:t.sf,borderRight:`1px solid ${t.bd}`,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}}>
-      <div style={{padding:"16px 14px",display:"flex",alignItems:"center",gap:8,borderBottom:`1px solid ${t.bd}`}}>
-        <div style={{width:32,height:32,borderRadius:10,background:t.gd,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:16}}>🌸</span></div>
-        <div><div style={{fontWeight:800,fontSize:14,color:t.tx,letterSpacing:-.3}}>Dream Team</div><div style={{fontSize:9,color:t.dm,fontWeight:500}}>Order Management</div></div>
-      </div>
-      <div style={{flex:1,padding:"8px 6px",overflowY:"auto"}}>
-        {NAV.map(n=><div key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 10px",borderRadius:10,cursor:"pointer",marginBottom:2,background:tab===n.id?t.ab:"transparent",color:tab===n.id?t.ac:t.dm,fontWeight:tab===n.id?600:500,fontSize:13,transition:"all .15s ease"}}>
-          <span style={{fontSize:15,width:20,textAlign:"center"}}>{n.icon}</span><span style={{flex:1}}>{n.l}</span>
-          {n.n>0&&<span style={{fontSize:9,background:tab===n.id?t.ac:"#E2E8F0",color:tab===n.id?"#fff":"#64748B",padding:"2px 7px",borderRadius:10,fontWeight:700,minWidth:20,textAlign:"center"}}>{n.n}</span>}
+    {!mob&&<div style={{width:170,background:t.sf,borderRight:`1px solid ${t.bd}`,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}}>
+      <div style={{padding:12,display:"flex",alignItems:"center",gap:6,borderBottom:`1px solid ${t.bd}`}}><span style={{fontSize:18}}>🌸</span><span style={{fontWeight:800,fontSize:13,color:t.tx}}>Dream Team</span></div>
+      <div style={{flex:1,padding:"6px 4px"}}>
+        {NAV.map(n=><div key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 8px",borderRadius:8,cursor:"pointer",marginBottom:1,background:tab===n.id?t.ab:"transparent",color:tab===n.id?t.ac:t.dm,fontWeight:tab===n.id?600:400,fontSize:12}}>
+          <span style={{fontSize:14}}>{n.icon}</span><span style={{flex:1}}>{n.l}</span>
+          {n.n>0&&<span style={{fontSize:9,background:tab===n.id?t.ac:t.bd,color:tab===n.id?"#fff":t.dm,padding:"1px 5px",borderRadius:8,fontWeight:600}}>{n.n}</span>}
         </div>)}
       </div>
-      <div style={{padding:10,borderTop:`1px solid ${t.bd}`}}>
-        <button onClick={()=>setMAdd(true)} style={{width:"100%",padding:10,borderRadius:10,border:"none",background:t.gd,color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:6,boxShadow:"0 2px 8px rgba(99,102,241,.25)"}}>+ Đơn mới</button>
+      <div style={{padding:8,borderTop:`1px solid ${t.bd}`}}>
+        <button onClick={()=>setMAdd(true)} style={{width:"100%",padding:7,borderRadius:8,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",marginBottom:4}}>+ Đơn mới</button>
         <div style={{display:"flex",gap:4}}>
-          <button onClick={toggleDark} style={{flex:1,padding:7,borderRadius:8,border:"none",background:t.bg,color:t.dm,fontSize:12,cursor:"pointer"}}>{dark?"☀️":"🌙"}</button>
-          <button onClick={()=>{load();msg("🔄 Đang tải...");}} style={{flex:1,padding:7,borderRadius:8,border:"none",background:t.bg,color:t.dm,fontSize:12,cursor:"pointer"}}>🔄</button>
-          <button onClick={()=>exportCSV(active)} style={{flex:1,padding:7,borderRadius:8,border:"none",background:t.bg,color:t.dm,fontSize:12,cursor:"pointer"}}>📥</button>
+          <button onClick={toggleDark} style={{flex:1,padding:5,borderRadius:6,border:"none",background:t.bg,color:t.dm,fontSize:11,cursor:"pointer"}}>{dark?"☀️":"🌙"}</button>
+          <button onClick={()=>{load();msg("🔄 Đang tải...");}} style={{flex:1,padding:5,borderRadius:6,border:"none",background:t.bg,color:t.dm,fontSize:11,cursor:"pointer"}}>🔄</button>
+          <button onClick={()=>exportCSV(active)} style={{flex:1,padding:5,borderRadius:6,border:"none",background:t.bg,color:t.dm,fontSize:11,cursor:"pointer"}}>📥</button>
         </div>
       </div>
     </div>}
 
-    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",paddingBottom:mob?80:0}}>
-      <div style={{padding:"10px 16px",background:t.sf,borderBottom:`1px solid ${t.bd}`,position:"sticky",top:0,zIndex:10,backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-          {mob&&<span style={{fontSize:16,marginRight:2}}>🌸</span>}
-          {mob&&<span style={{fontWeight:800,fontSize:14,color:t.tx,letterSpacing:-.3}}>Dream Team</span>}
-          <span style={{flex:1}}/>
-          <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-            {[{icon:"📋",val:active.length,color:t.ac},{icon:"💰",val:`¥${fmt(stats.rev)}`,color:"#D97706"},{icon:"🚚",val:stats.byS["Về kho"]||0,color:"#0D9488"}].map((s,i)=>
-              <div key={i} style={{display:"flex",alignItems:"center",gap:3,background:t.bg,padding:"4px 10px",borderRadius:20,fontSize:11}}>
-                <span>{s.icon}</span><b style={{color:s.color}}>{s.val}</b>
-              </div>)}
-            {stats.overdue>0&&<div style={{background:"#FEF2F2",color:"#DC2626",padding:"4px 10px",borderRadius:20,fontWeight:700,fontSize:10,display:"flex",alignItems:"center",gap:3}}>⚠️ {stats.overdue}</div>}
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:4}}>
-            <span style={{width:7,height:7,borderRadius:"50%",background:"#22C55E",boxShadow:"0 0 6px rgba(34,197,94,.4)",animation:"pulse 2s infinite"}}/>
-            <span style={{fontSize:10,color:t.dm,fontWeight:500}}>{lastSync}</span>
-          </div>
-        </div>
+    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",paddingBottom:mob?76:0}}>
+      <div style={{padding:"8px 14px",borderBottom:`1px solid ${t.bd}`,background:t.sf,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:10,flexWrap:"wrap"}}>
+        <span style={{fontSize:11,color:t.dm}}>📋<b style={{color:t.ac}}>{active.length}</b></span>
+        <span style={{fontSize:11,color:t.dm}}>💰<b style={{color:"#D97706"}}>¥{fmt(stats.rev)}</b></span>
+        {stats.profit>0&&<span style={{fontSize:11,color:t.dm}}>📈<b style={{color:"#16A34A"}}>¥{fmt(stats.profit)}</b></span>}
+        <span style={{fontSize:11,color:t.dm}}>🚚<b style={{color:"#0D9488"}}>{stats.byS["Về kho"]||0}</b></span>
+        {stats.overdue>0&&<span style={{background:"#FEE2E2",color:"#DC2626",padding:"1px 6px",borderRadius:8,fontWeight:600,fontSize:10}}>⚠️{stats.overdue}</span>}
+        <span style={{flex:1}}/><span style={{width:6,height:6,borderRadius:"50%",background:"#16A34A",animation:"pulse 2s infinite"}}/><span style={{fontSize:10,color:t.dm}}>{lastSync}</span>
       </div>
 
-      <div style={{padding:mob?"12px 14px":"18px 22px",flex:1,overflow:"auto"}}>
+      <div style={{padding:mob?10:"16px 18px",flex:1,overflow:"auto"}}>
         {loading&&!orders.length?<div style={{textAlign:"center",padding:60,color:t.dm}}>⏳</div>:<>
 
         {/* DASHBOARD */}
@@ -1106,78 +1082,25 @@ function App(){
         {/* ORDERS */}
         {tab==="orders"&&<div>
           <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-            <input value={search} onChange={e=>{setSearch(e.target.value);setCustFilter("");}} placeholder="🔍 Tìm tên, SP, mã..." style={{flex:1,minWidth:140,padding:"10px 14px",border:`1.5px solid ${t.bd}`,borderRadius:12,fontSize:13,background:t.sf,color:t.tx}}/>
-            {!mob&&<input type="date" value={df} onChange={e=>setDf(e.target.value)} style={{padding:8,border:`1.5px solid ${t.bd}`,borderRadius:10,fontSize:11,background:t.sf,color:t.tx,width:120}}/>}
-            {!mob&&<input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{padding:8,border:`1.5px solid ${t.bd}`,borderRadius:10,fontSize:11,background:t.sf,color:t.tx,width:120}}/>}
-            <button onClick={()=>setMAdd(true)} title="Ctrl+N" style={{padding:"10px 16px",borderRadius:12,border:"none",background:t.ac,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 2px 8px rgba(99,102,241,.2)"}}>+</button>
+            <input value={search} onChange={e=>{setSearch(e.target.value);setCustFilter("");}} placeholder="🔍 Tìm..." style={{flex:1,minWidth:120,padding:"7px 10px",border:`1.5px solid ${t.bd}`,borderRadius:8,fontSize:12,background:t.sf,color:t.tx}}/>
+            <input type="date" value={df} onChange={e=>setDf(e.target.value)} style={{padding:6,border:`1.5px solid ${t.bd}`,borderRadius:8,fontSize:10,background:t.sf,color:t.tx,width:110}}/>
+            <input type="date" value={dt} onChange={e=>setDt(e.target.value)} style={{padding:6,border:`1.5px solid ${t.bd}`,borderRadius:8,fontSize:10,background:t.sf,color:t.tx,width:110}}/>
+            <button onClick={()=>setMAdd(true)} title="Ctrl+N" style={{padding:"7px 12px",borderRadius:8,border:"none",background:t.ac,color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>+</button>
+            <button onClick={()=>exportCSV(filtered)} title="Export CSV" style={{padding:"7px 10px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,fontSize:11,cursor:"pointer"}}>📥</button>
           </div>
           {custFilter&&<div style={{background:"#FFFBEB",borderRadius:8,padding:"5px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
             <span style={{fontSize:11,color:"#92400E"}}>👤 {custFilter}</span>
             <button onClick={()=>setCustFilter("")} style={{border:"none",background:"#FDE68A",borderRadius:4,padding:"1px 6px",fontSize:10,cursor:"pointer",color:"#92400E"}}>✕ Xoá lọc</button>
           </div>}
-          <div style={{display:"flex",gap:4,marginBottom:10,overflowX:"auto",paddingBottom:2,WebkitOverflowScrolling:"touch"}}>
-            {["Tất cả",...ST].map(s=>{const cnt=s==="Tất cả"?filtered.length:(stats.byS[s]||0);return <button key={s} onClick={()=>setFilt(s)} style={{padding:mob?"8px 12px":"6px 10px",borderRadius:10,border:filt===s?"none":`1.5px solid ${t.bd}`,fontSize:mob?12:11,fontWeight:600,cursor:"pointer",background:filt===s?t.ac:t.sf,color:filt===s?"#fff":t.dm,whiteSpace:"nowrap",boxShadow:filt===s?"0 2px 8px rgba(99,102,241,.2)":"none"}}>{s}{cnt>0?` (${cnt})`:""}</button>})}
+          <div style={{display:"flex",gap:3,marginBottom:8,overflowX:"auto"}}>
+            {["Tất cả",...ST].map(s=><button key={s} onClick={()=>setFilt(s)} style={{padding:"5px 8px",borderRadius:6,border:"none",fontSize:10,fontWeight:600,cursor:"pointer",background:filt===s?t.ac:t.sf,color:filt===s?"#fff":t.dm,whiteSpace:"nowrap"}}>{s}</button>)}
           </div>
           {sel.size>0&&<div style={{background:t.ab,borderRadius:8,padding:"5px 10px",marginBottom:8,display:"flex",alignItems:"center",gap:4,flexWrap:"wrap"}}>
             <b style={{color:t.ac,fontSize:11}}>{sel.size} đơn</b>
             <span style={{fontSize:10,color:"#D97706"}}>¥{fmt(filtered.filter(o=>sel.has(o._rowIndex)).reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0))}</span>
             {ST.map(s=><button key={s} onClick={()=>{const items=filtered.filter(o=>sel.has(o._rowIndex)).map(o=>({rowIndex:o._rowIndex,tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||""),newStatus:s}));safePost({action:"bulkUpdateStatus",items},`${items.length} → ${s}`);}} disabled={busy} style={{padding:"2px 6px",borderRadius:4,border:"none",background:`${SC[s]}15`,color:SC[s],fontSize:9,fontWeight:600,cursor:"pointer"}}>{s}</button>)}
           </div>}
-          {/* Summary */}
-          <div style={{display:"flex",gap:8,marginBottom:10,padding:"10px 14px",background:t.sf,borderRadius:14,border:`1px solid ${t.bd}`,flexWrap:"wrap",alignItems:"center"}}>
-            <span style={{fontSize:12,color:t.dm}}><b style={{color:t.ac}}>{filtered.length}</b> đơn</span>
-            <span style={{fontSize:12,color:t.dm}}><b style={{color:t.tx}}>{filtTotals.qty}</b> sp</span>
-            <span style={{fontSize:12,color:t.dm}}><b style={{color:"#D97706"}}>¥{fmt(filtTotals.rev)}</b></span>
-            <span style={{flex:1}}/>
-            <span style={{fontSize:11,color:t.dm}}>{filtTotals.cust} khách</span>
-            <button onClick={()=>exportCSV(filtered)} style={{padding:"3px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,fontSize:10,cursor:"pointer"}}>📥</button>
-          </div>
-
-          {/* Mobile Card View */}
-          {mob&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {filtered.map(o=>{const isS=sel.has(o._rowIndex);const days=daysAgo(String(o["NGÀY OD"]||"").slice(0,10));const over=!["Đã gửi","Về kho"].includes(o["TRẠNG THÁI"])&&days>21;const dayColor=days<=7?"#16A34A":days<=21?"#D97706":"#DC2626";const stColor=SC[o["TRẠNG THÁI"]]||"#999";
-              return <div key={o._rowIndex} style={{background:isS?t.ab:t.sf,borderRadius:14,border:`1.5px solid ${isS?t.ac:over?"#FECACA":t.bd}`,padding:"12px 14px",position:"relative",overflow:"hidden"}}>
-                <div style={{position:"absolute",top:0,left:0,width:4,height:"100%",background:stColor}}/>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,paddingLeft:6}}>
-                  <input type="checkbox" checked={isS} onChange={()=>setSel(p=>{const n=new Set(p);n.has(o._rowIndex)?n.delete(o._rowIndex):n.add(o._rowIndex);return n;})} style={{width:18,height:18,accentColor:t.ac}}/>
-                  <div style={{flex:1,cursor:"pointer"}} onClick={()=>setCustFilter(String(o["Tên khách"]||"").trim())}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <Avatar name={o["Tên khách"]} fb={o["Link fb"]} size={28} dup={dupNames[String(o["Tên khách"]||"").trim()]}/>
-                      <span style={{fontWeight:700,fontSize:14,color:t.tx}}>{o["Tên khách"]}</span>
-                    </div>
-                  </div>
-                  <select value={o["TRẠNG THÁI"]} onChange={e=>{
-                    const newSt=e.target.value;const name=String(o["Tên khách"]||"").trim();
-                    safePost({action:"updateStatus",rowIndex:o._rowIndex,newStatus:newSt,verify:{tenKhach:name,maSP:String(o["Mã SP"]||"")}},`→ ${newSt}`);
-                    const msgs={"Chờ hàng":`${name} ơi em xác nhận đơn nha!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\nGiá: ¥${fmt(o["Giá sp"])}\nHàng sẽ về trong 7-14 ngày. Về kho em báo ${name} CK nhé! 💜`,"Về kho":`${name} ơi hàng về rồi!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\n💰 ¥${fmt(o["Giá sp"])}\n\n${bank}\nCK xong báo t nhé.`};
-                    if(msgs[newSt]){copyText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
-                  }} disabled={busy} style={{padding:"6px 8px",borderRadius:8,border:`1.5px solid ${stColor}30`,background:`${stColor}10`,color:stColor,fontSize:11,fontWeight:700,cursor:"pointer"}}>{ST.map(s=><option key={s}>{s}</option>)}</select>
-                </div>
-                <div style={{paddingLeft:6,marginBottom:6}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-                    <span style={{fontWeight:700,color:t.ac,fontSize:13}}>{o["Mã SP"]}</span>
-                    <span style={{fontSize:12,color:t.tx}}>{o["Tên Sp"]}</span>
-                  </div>
-                  <div style={{display:"flex",gap:6,marginTop:5,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontSize:11,color:t.dm,background:t.bg,padding:"3px 10px",borderRadius:8}}>{o["SIZE"]}</span>
-                    <span style={{fontSize:11,color:t.dm,background:t.bg,padding:"3px 10px",borderRadius:8}}>{o["COLOR"]}</span>
-                    <span style={{fontSize:13,fontWeight:700,color:t.tx}}>x{o["Số lượng"]}</span>
-                    <span style={{fontSize:13,fontWeight:700,color:"#D97706"}}>¥{fmt(o["Giá sp"])}</span>
-                  </div>
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:6,paddingLeft:6,paddingTop:8,borderTop:`1px solid ${t.bd}`,marginTop:4}}>
-                  {days>0&&<span style={{fontSize:10,fontWeight:700,color:dayColor,background:dayColor+"12",padding:"3px 8px",borderRadius:6}}>{days} ngày</span>}
-                  {o["TRẠNG THÁI"]==="Đã gửi"&&<span style={{fontSize:10,fontWeight:700,padding:"3px 8px",borderRadius:6,background:(o._note||"").includes("💰CK")?"#D1FAE5":"#FEE2E2",color:(o._note||"").includes("💰CK")?"#065F46":"#DC2626"}}>{(o._note||"").includes("💰CK")?"✅ CK":"💳 Chưa CK"}</span>}
-                  <span style={{flex:1}}/>
-                  <button onClick={()=>{copyText(`${o["Tên khách"]} | ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]} | ¥${fmt(o["Giá sp"])} | ${o["TRẠNG THÁI"]}`);msg("📋 Copied");}} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,fontSize:11,cursor:"pointer"}}>📋</button>
-                  <button onClick={()=>setMEdit(o)} style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,fontSize:11,cursor:"pointer"}}>✏️</button>
-                  <button onClick={()=>{if(!confirm("Xoá?"))return;safePost({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}},"Đã xoá");}} disabled={busy} style={{padding:"6px 10px",borderRadius:8,border:`1px solid #FECACA`,background:"#FEF2F2",fontSize:11,cursor:"pointer",color:"#DC2626"}}>🗑</button>
-                </div>
-              </div>;})}
-          </div>}
-
-          {/* Desktop Table View */}
-          {!mob&&<div style={{background:t.sf,borderRadius:10,border:`1px solid ${t.bd}`,overflow:"hidden"}}>
+          <div style={{background:t.sf,borderRadius:10,border:`1px solid ${t.bd}`,overflow:"hidden"}}>
             <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
               <thead><tr style={{borderBottom:`2px solid ${t.bd}`}}>
                 <th style={{padding:"7px 4px",width:24}}><input type="checkbox" checked={sel.size===filtered.length&&filtered.length>0} onChange={()=>{sel.size===filtered.length?setSel(new Set()):setSel(new Set(filtered.map(o=>o._rowIndex)));}}/></th>
@@ -1215,8 +1138,8 @@ function App(){
                 <td colSpan={3}/>
               </tr></tfoot>
             </table></div>
-          </div>}
-          {!mob&&<div style={{fontSize:10,color:t.dm,marginTop:4}}>💡 Bấm tên = lọc · Double-click tên = sửa · Bấm ô = sửa trực tiếp · Enter = lưu · Esc = huỷ</div>}
+          </div>
+          <div style={{fontSize:10,color:t.dm,marginTop:4}}>💡 Bấm tên = lọc · Double-click tên = sửa · Bấm ô = sửa trực tiếp · Enter = lưu · Esc = huỷ</div>
         </div>}
 
         {/* ★ ĐẶT GZ — gom đơn + bulk update */}
@@ -1313,20 +1236,11 @@ function App(){
       </div>
     </div>
 
-    {mob&&<div style={{position:"fixed",bottom:0,left:0,right:0,background:t.sf,borderTop:`1px solid ${t.bd}`,padding:"2px 0 max(6px, env(safe-area-inset-bottom))",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.08)",backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)"}}>
-      <div style={{display:"flex",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
-        {NAV.map(n=><button key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{flex:"0 0 auto",minWidth:60,display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"6px 8px 4px",border:"none",background:"transparent",color:tab===n.id?t.ac:t.dm,fontSize:9,fontWeight:tab===n.id?700:500,cursor:"pointer",position:"relative"}}>
-          <div style={{position:"relative"}}>
-            <span style={{fontSize:20,lineHeight:1}}>{n.icon}</span>
-            {n.n>0&&<span style={{position:"absolute",top:-4,right:-8,background:"#EF4444",color:"#fff",fontSize:8,fontWeight:700,padding:"1px 4px",borderRadius:8,minWidth:14,textAlign:"center"}}>{n.n>99?"99+":n.n}</span>}
-          </div>
-          <span style={{letterSpacing:-.2}}>{n.l}</span>
-          {tab===n.id&&<div style={{position:"absolute",top:0,left:"50%",transform:"translateX(-50%)",width:20,height:3,borderRadius:2,background:t.ac}}/>}
-        </button>)}
-      </div>
+    {mob&&<div style={{position:"fixed",bottom:0,left:0,right:0,display:"flex",background:t.sf,borderTop:`1px solid ${t.bd}`,padding:"3px 0 max(8px, env(safe-area-inset-bottom))",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,.06)"}}>
+      {NAV.map(n=><button key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"5px 0 3px",border:"none",background:"transparent",color:tab===n.id?t.ac:t.dm,fontSize:10,fontWeight:tab===n.id?700:600,cursor:"pointer"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span>{n.l}</button>)}
     </div>}
-    {!mob&&<button onClick={()=>setMAdd(true)} style={{position:"fixed",bottom:20,right:20,width:52,height:52,borderRadius:16,border:"none",background:t.gd||"linear-gradient(135deg,#6366F1,#8B5CF6)",color:"#fff",fontSize:22,cursor:"pointer",boxShadow:"0 8px 24px rgba(99,102,241,.3)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
-    <button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:mob?72:20,right:mob?10:78,width:36,height:36,borderRadius:10,border:`1px solid ${t.bd}`,background:t.sf,color:t.dm,fontSize:14,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,.08)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center"}}>↑</button>
+    {!mob&&<button onClick={()=>setMAdd(true)} style={{position:"fixed",bottom:18,right:18,width:46,height:46,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:20,cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,.3)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
+    <button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:mob?62:18,right:mob?8:70,width:32,height:32,borderRadius:8,border:"none",background:t.sf,color:t.dm,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.1)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid ${t.bd}`}}>↑</button>
   </div>;
 }
 
@@ -1725,7 +1639,7 @@ function ShipCard({cust,ci,shipData,shipSel,setShipSel,copyNotify,doShip,cancelO
       </div>}
       <div style={{display:"flex",gap:6,marginTop:8}}>
         <button onClick={addCustToDraft} disabled={inDraft} style={{padding:"10px 12px",borderRadius:9,border:"none",background:inDraft?"#D1FAE5":"#EA580C",color:inDraft?"#065F46":"#fff",fontSize:12,fontWeight:600,cursor:inDraft?"default":"pointer"}}>{inDraft?"✅ Đã draft":"📋 +Draft"}</button>
-        <button onClick={()=>copyNotify(cust,selItems.length>0?selItems:null,Number(shipFee)||0,tracking)} style={{flex:1,padding:"10px 8px",borderRadius:9,border:"none",background:t.gd||"linear-gradient(135deg,#6366F1,#8B5CF6)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>📋 Copy {selItems.length>0?`(${selItems.length})`:""}</button>
+        <button onClick={()=>copyNotify(cust,selItems.length>0?selItems:null,Number(shipFee)||0,tracking)} style={{flex:1,padding:"10px 8px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>📋 Copy {selItems.length>0?`(${selItems.length})`:""}</button>
         <button onClick={()=>{const items=selItems.length>0?selItems:cust.items;if(!confirm(`Gửi ${items.length} món cho ${cust.name}?`))return;doShip(items,tracking);}} disabled={busy} style={{padding:"10px 16px",borderRadius:9,border:"none",background:"#16A34A",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",opacity:busy?.5:1,boxShadow:"0 1px 4px rgba(22,163,74,.3)"}}>📦 Gửi {selItems.length>0?`(${selItems.length})`:""}</button>
       </div>
     </div>
@@ -3000,7 +2914,7 @@ function LoginScreen({onLogin,t}){
       <input type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&go()} placeholder="Mật khẩu..." autoFocus
         style={{width:"100%",padding:"14px 18px",borderRadius:12,border:`2px solid ${err?"#EF4444":t.bd}`,fontSize:15,background:t.inp,color:t.tx,textAlign:"center",letterSpacing:2}}/>
       {err&&<p style={{color:"#EF4444",fontSize:12,marginTop:8}}>Sai!</p>}
-      <button onClick={go} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:t.gd||"linear-gradient(135deg,#6366F1,#8B5CF6)",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",marginTop:16}}>Đăng nhập</button>
+      <button onClick={go} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",marginTop:16}}>Đăng nhập</button>
     </div>
   </div>;
 }
