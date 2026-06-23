@@ -86,16 +86,17 @@ async function findSurplus(maSP: string, size: string, color: string) {
   return all.find((s) => norm(s.ma) === maSP && norm(s.sz) === size && norm(s.cl) === color && s.sl > 0) ?? null;
 }
 
-async function useSurplus(maSP: string, size: string, color: string, qty: number): Promise<string | null> {
+async function useSurplus(maSP: string, size: string, color: string, qty: number): Promise<{ tt: string; matched: number } | null> {
   const found = await findSurplus(maSP, size, color);
-  if (!found || found.sl <= 0 || found.sl < qty) return null;
-  const newSl = found.sl - qty;
+  if (!found || found.sl <= 0) return null;
+  const matched = Math.min(found.sl, qty);
+  const newSl = found.sl - matched;
   if (newSl <= 0) {
     await prisma.dtSurplus.delete({ where: { id: found.id } });
   } else {
     await prisma.dtSurplus.update({ where: { id: found.id }, data: { sl: newSl } });
   }
-  return found.trangThai || "Về kho";
+  return { tt: found.trangThai || "Về kho", matched };
 }
 
 async function addOrUpdateSurplus(maSP: string, size: string, color: string, qty: number, tt: string) {
@@ -274,11 +275,17 @@ export async function POST(request: NextRequest) {
         const qty = Number(o.soLuong) || 1;
         let status = "CHƯA ĐẶT";
         let autoNote: string | null = null;
+        let surplusMatched = 0;
 
-        const surplusTT = await useSurplus(maSP, size, color, qty);
-        if (surplusTT) {
-          status = surplusTT;
-          autoNote = "📦DƯ";
+        const surplusResult = await useSurplus(maSP, size, color, qty);
+        if (surplusResult) {
+          surplusMatched = surplusResult.matched;
+          if (surplusResult.matched >= qty) {
+            status = surplusResult.tt;
+            autoNote = "📦DƯ";
+          } else {
+            autoNote = `📦DƯ ${surplusResult.matched}/${qty}`;
+          }
         }
 
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -300,7 +307,7 @@ export async function POST(request: NextRequest) {
                 note: autoNote,
               },
             });
-            result = { success: true, row: ri, autoStatus: surplusTT ?? null };
+            result = { success: true, row: ri, autoStatus: surplusResult && surplusResult.matched >= qty ? surplusResult.tt : null, surplusMatched };
             break;
           } catch (err: unknown) {
             if (attempt === 2 || !(err instanceof Error) || !err.message.includes("Unique")) throw err;
@@ -321,11 +328,15 @@ export async function POST(request: NextRequest) {
           let status = "CHƯA ĐẶT";
           let autoNote: string | null = null;
 
-          const surplusTT = await useSurplus(maSP, size, color, qty);
-          if (surplusTT) {
-            status = surplusTT;
-            autoNote = "📦DƯ";
-            autoCount++;
+          const surplusResult = await useSurplus(maSP, size, color, qty);
+          if (surplusResult) {
+            if (surplusResult.matched >= qty) {
+              status = surplusResult.tt;
+              autoNote = "📦DƯ";
+              autoCount++;
+            } else {
+              autoNote = `📦DƯ ${surplusResult.matched}/${qty}`;
+            }
           }
 
           for (let attempt = 0; attempt < 3; attempt++) {
