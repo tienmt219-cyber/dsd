@@ -575,7 +575,7 @@ function App(){
   const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [toast,setToast]=useState(null);const [lastSync,setLastSync]=useState(null);
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
   const [search,setSearch]=useState("");const [filt,setFilt]=useState("Tất cả");const [custFilter,setCustFilter]=useState("");
-  const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");
+  const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");const [shipSearch,setShipSearch]=useState("");
   const ckOverrides=useRef(null);
   if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
   const saveCkOverrides=function(){try{localStorage.setItem("dt_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
@@ -946,7 +946,7 @@ function App(){
     {!mob&&<div style={{width:170,background:t.sf,borderRight:`1px solid ${t.bd}`,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}}>
       <div style={{padding:12,display:"flex",alignItems:"center",gap:6,borderBottom:`1px solid ${t.bd}`}}><span style={{fontSize:18}}>🌸</span><span style={{fontWeight:800,fontSize:13,color:t.tx}}>Dream Team</span></div>
       <div style={{flex:1,padding:"6px 4px"}}>
-        {NAV.map(n=><div key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 8px",borderRadius:8,cursor:"pointer",marginBottom:1,background:tab===n.id?t.ab:"transparent",color:tab===n.id?t.ac:t.dm,fontWeight:tab===n.id?600:400,fontSize:12}}>
+        {NAV.map(n=><div key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());setShipSearch("");}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 8px",borderRadius:8,cursor:"pointer",marginBottom:1,background:tab===n.id?t.ab:"transparent",color:tab===n.id?t.ac:t.dm,fontWeight:tab===n.id?600:400,fontSize:12}}>
           <span style={{fontSize:14}}>{n.icon}</span><span style={{flex:1}}>{n.l}</span>
           {n.n>0&&<span style={{fontSize:9,background:tab===n.id?t.ac:t.bd,color:tab===n.id?"#fff":t.dm,padding:"1px 5px",borderRadius:8,fontWeight:600}}>{n.n}</span>}
         </div>)}
@@ -1209,6 +1209,7 @@ function App(){
               <span style={{fontSize:10,color:t.dm}}>Tổng: <b style={{color:"#D97706"}}>¥{fmt(bossDraft.reduce((s,o)=>s+(Number(o["Giá sp"]||0))*(Number(o["Số lượng"]||1)),0))}</b> · {[...new Set(bossDraft.map(o=>String(o["Tên khách"]||"").trim()))].length} khách</span>
             </div>
           </div>}
+          <input value={shipSearch} onChange={e=>setShipSearch(e.target.value)} placeholder="🔍 Tìm khách, mã SP..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.inp,color:t.tx,fontSize:12,marginBottom:8,outline:"none"}}/>
           <p style={{color:t.dm,fontSize:11,marginBottom:8}}>Đủ hàng lên trên · Tick chọn món → Gửi</p>
           {shipData.length>0&&<div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
             <div style={{background:t.sf,borderRadius:8,padding:"6px 10px",border:`1px solid ${t.bd}`,flex:1,fontSize:11}}>
@@ -1217,10 +1218,10 @@ function App(){
             <button onClick={()=>{const ns=new Set();shipData.filter(c=>!c.pending).forEach(c=>c.items.forEach(o=>ns.add(o._rowIndex)));setShipSel(ns);msg(`✅ Chọn ${ns.size} món đủ hàng`);}} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>☑ Đủ hàng</button>
             <button onClick={()=>setShipSel(new Set())} style={{padding:"6px 10px",borderRadius:8,border:"none",background:t.sf,color:t.dm,fontSize:10,cursor:"pointer",border:`1px solid ${t.bd}`}}>✕ Bỏ chọn</button>
           </div>}
-          {!shipData.length?<div style={{background:t.sf,borderRadius:12,padding:30,textAlign:"center",border:`1px solid ${t.bd}`}}><div style={{fontSize:32,marginBottom:8}}>📭</div><p style={{color:t.tx,fontWeight:600}}>Không có hàng "Về kho"</p></div>:<>
-          {shipData.filter(c=>!c.pending).length>0&&<h3 style={{fontSize:13,fontWeight:700,color:"#0D9488",marginBottom:8}}>✅ Đủ hàng — gửi ngay ({shipData.filter(c=>!c.pending).length})</h3>}
-          {shipData.map((cust,ci)=><ShipCard key={ci} cust={cust} ci={ci} shipData={shipData} shipSel={shipSel} setShipSel={setShipSel} copyNotify={copyNotify} doShip={doShip} cancelOrder={cancelOrder} setMCust={setMCust} busy={busy} t={t} addToBossDraft={addToBossDraft} addrs={addrs} bossDraft={bossDraft} msg={msg}/>)}
-          </>}
+          {(()=>{const _q=shipSearch.trim().toLowerCase();const _sd=_q?shipData.filter(c=>c.name.toLowerCase().includes(_q)||c.items.some(o=>String(o["Mã SP"]||"").toLowerCase().includes(_q)||String(o["Tên Sp"]||"").toLowerCase().includes(_q))):shipData;return !_sd.length?<div style={{background:t.sf,borderRadius:12,padding:30,textAlign:"center",border:`1px solid ${t.bd}`}}><div style={{fontSize:32,marginBottom:8}}>📭</div><p style={{color:t.tx,fontWeight:600}}>{_q?"Không tìm thấy":"Không có hàng \"Về kho\""}</p></div>:(<>
+          {_sd.filter(c=>!c.pending).length>0&&<h3 style={{fontSize:13,fontWeight:700,color:"#0D9488",marginBottom:8}}>✅ Đủ hàng — gửi ngay ({_sd.filter(c=>!c.pending).length})</h3>}
+          {_sd.map((cust,ci)=><ShipCard key={ci} cust={cust} ci={ci} shipData={shipData} shipSel={shipSel} setShipSel={setShipSel} copyNotify={copyNotify} doShip={doShip} cancelOrder={cancelOrder} setMCust={setMCust} busy={busy} t={t} addToBossDraft={addToBossDraft} addrs={addrs} bossDraft={bossDraft} msg={msg}/>)}
+          </>)})()}
         </div>}
 
         {/* ★ KHO — Smart nhập kho + auto chuyển Về kho */}
@@ -1237,7 +1238,7 @@ function App(){
     </div>
 
     {mob&&<div style={{position:"fixed",bottom:0,left:0,right:0,display:"flex",background:t.sf,borderTop:`1px solid ${t.bd}`,padding:"3px 0 max(8px, env(safe-area-inset-bottom))",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,.06)"}}>
-      {NAV.map(n=><button key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"5px 0 3px",border:"none",background:"transparent",color:tab===n.id?t.ac:t.dm,fontSize:10,fontWeight:tab===n.id?700:600,cursor:"pointer"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span>{n.l}</button>)}
+      {NAV.map(n=><button key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());setShipSearch("");}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"5px 0 3px",border:"none",background:"transparent",color:tab===n.id?t.ac:t.dm,fontSize:10,fontWeight:tab===n.id?700:600,cursor:"pointer"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span>{n.l}</button>)}
     </div>}
     {!mob&&<button onClick={()=>setMAdd(true)} style={{position:"fixed",bottom:18,right:18,width:46,height:46,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:20,cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,.3)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
     <button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:mob?62:18,right:mob?8:70,width:32,height:32,borderRadius:8,border:"none",background:t.sf,color:t.dm,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.1)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid ${t.bd}`}}>↑</button>
@@ -1246,12 +1247,15 @@ function App(){
 
 // ═══ CK TAB (extracted component) ═══
 function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,setMCust}){
+  const [ckSearch,setCkSearch]=useState("");
   const allSent=orders.filter(o=>o["TRẠNG THÁI"]==="Đã gửi");
   const chuaCK=allSent.filter(o=>!(o._note||"").includes("💰CK"));
   const daCK=allSent.filter(o=>(o._note||"").includes("💰CK"));
   const groupBy=(list)=>{const m={};list.forEach(o=>{const n=String(o["Tên khách"]||"").trim();const fb=String(o["Link fb"]||"").trim();const key=n+"|"+normalizeFB(fb||"");if(!m[key])m[key]={items:[],rev:0,fb:fb,name:n};m[key].items.push(o);m[key].rev+=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);});return Object.entries(m).sort((a,b)=>b[1].rev-a[1].rev);};
-  const chuaCKgrp=groupBy(chuaCK);
-  const daCKgrp=groupBy(daCK);
+  const _ckQ=ckSearch.trim().toLowerCase();
+  const _ckFilter=(grp)=>_ckQ?grp.filter(([name,c])=>c.name.toLowerCase().includes(_ckQ)||c.items.some(o=>String(o["Mã SP"]||"").toLowerCase().includes(_ckQ)||String(o["Tên Sp"]||"").toLowerCase().includes(_ckQ))):grp;
+  const chuaCKgrp=_ckFilter(groupBy(chuaCK));
+  const daCKgrp=_ckFilter(groupBy(daCK));
   const totalChuaCK=chuaCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
   const totalDaCK=daCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
 
@@ -1259,6 +1263,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
       <h2 style={{fontSize:18,fontWeight:800,color:t.tx}}>💳 Chuyển khoản</h2>
     </div>
+    <input value={ckSearch} onChange={e=>setCkSearch(e.target.value)} placeholder="🔍 Tìm khách, mã SP..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.inp,color:t.tx,fontSize:12,marginBottom:10,outline:"none"}}/>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
       <div onClick={()=>setCkView("chua")} style={{background:ckView==="chua"?"#FEF2F2":"transparent",borderRadius:10,padding:12,border:ckView==="chua"?"2px solid #DC2626":`1px solid ${t.bd}`,cursor:"pointer",textAlign:"center"}}>
         <div style={{fontSize:9,color:"#DC2626",fontWeight:700}}>🔴 CHƯA CK</div>
@@ -1746,6 +1751,7 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
 
 function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
   const [sel,setSel]=useState({stage:"",keys:new Set()});
+  const [gzSearch,setGzSearch]=useState("");
   const stats=gzCounts||{cd:0,ch:0,ds:0};
 
   const bulkUpdate=async(stage,newStatus,label)=>{
@@ -1791,9 +1797,11 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
     copyText("ĐẶT GZ:\n\n"+text+"\n\nTổng: "+total+" SP");
   };
 
-  const itemsCD=gzData.filter(g=>g.chuaDat>0);
-  const itemsCH=gzData.filter(g=>g.choHang>0);
-  const itemsDS=gzData.filter(g=>g.dangShip>0);
+  const _gzQ=gzSearch.trim().toLowerCase();
+  const _gzF=g=>!_gzQ||g.ma.toLowerCase().includes(_gzQ)||String(g.ten||"").toLowerCase().includes(_gzQ)||String(g.size||"").toLowerCase().includes(_gzQ)||String(g.color||"").toLowerCase().includes(_gzQ);
+  const itemsCD=gzData.filter(g=>g.chuaDat>0&&_gzF(g));
+  const itemsCH=gzData.filter(g=>g.choHang>0&&_gzF(g));
+  const itemsDS=gzData.filter(g=>g.dangShip>0&&_gzF(g));
 
   const Section=({title,icon,color,items,stage,qtyKey,nextStatus,nextLabel,nextIcon})=>{
     if(!items.length)return null;
@@ -1833,7 +1841,8 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
 
   return <div>
     <h2 style={{fontSize:18,fontWeight:800,color:t.tx,marginBottom:4}}>🏭 Pipeline đặt hàng</h2>
-    <p style={{color:t.dm,fontSize:11,marginBottom:12}}>CHƯA ĐẶT → Chờ hàng → Đang ship → Về kho (auto khi nhập kho)</p>
+    <p style={{color:t.dm,fontSize:11,marginBottom:8}}>CHƯA ĐẶT → Chờ hàng → Đang ship → Về kho (auto khi nhập kho)</p>
+    <input value={gzSearch} onChange={e=>setGzSearch(e.target.value)} placeholder="🔍 Tìm mã SP, tên SP..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.inp,color:t.tx,fontSize:12,marginBottom:10,outline:"none"}}/>
     <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>
       {[{l:"Chưa đặt",v:stats.cd,c:"#94A3B8",i:"⚪"},{l:"Chờ hàng",v:stats.ch,c:"#D97706",i:"🟡"},{l:"Đang ship",v:stats.ds,c:"#7C3AED",i:"🟣"},{l:"Hàng dư",v:surplusTotal,c:"#16A34A",i:"📦"}].map((s,idx)=>
         <div key={idx} style={{background:t.sf,borderRadius:10,padding:"8px 12px",border:"1px solid "+t.bd,flex:1,textAlign:"center"}}>
