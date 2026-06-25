@@ -576,6 +576,7 @@ function App(){
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
   const [search,setSearch]=useState("");const [filt,setFilt]=useState("Tất cả");const [custFilter,setCustFilter]=useState("");
   const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");const [shipSearch,setShipSearch]=useState("");
+  const _now=new Date();const [lbMonth,setLbMonth]=useState(_now.getMonth());const [lbYear,setLbYear]=useState(_now.getFullYear());
   const ckOverrides=useRef(null);
   if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
   const saveCkOverrides=function(){try{localStorage.setItem("dt_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
@@ -1077,6 +1078,85 @@ function App(){
               }} style={{marginTop:8,width:"100%",padding:6,borderRadius:6,border:"none",background:t.ab,color:t.ac,fontSize:10,fontWeight:600,cursor:"pointer"}}>📋 Copy báo cáo</button>
             </div>
           </div>
+          {(()=>{
+            const now=new Date();
+            const curY=now.getFullYear(),curM=now.getMonth();
+            const mStart=`${lbYear}-${String(lbMonth+1).padStart(2,"0")}-01`;
+            const mEndD=new Date(lbYear,lbMonth+1,0);
+            const mEnd=`${lbYear}-${String(lbMonth+1).padStart(2,"0")}-${String(mEndD.getDate()).padStart(2,"0")}`;
+            const mOrders=orders.filter(o=>{
+              if(o["TRẠNG THÁI"]==="Đã xoá"||o["TRẠNG THÁI"]==="Lưu trữ")return false;
+              const d=String(o["NGÀY OD"]||"").slice(0,10);
+              return d>=mStart&&d<=mEnd;
+            });
+            const custMap={};
+            mOrders.forEach(o=>{
+              const n=String(o["Tên khách"]||"").trim();
+              const fb=String(o["Link fb"]||"").trim();
+              if(!n)return;
+              const key=n+"|"+normalizeFB(fb);
+              if(!custMap[key])custMap[key]={name:n,fb,rev:0,qty:0,items:0};
+              const rev=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);
+              custMap[key].rev+=rev;
+              custMap[key].qty+=Number(o["Số lượng"]||0);
+              custMap[key].items++;
+            });
+            const ranked=Object.values(custMap).sort((a,b)=>b.rev-a.rev);
+            const medals=["🥇","🥈","🥉"];
+            const monthNames=["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
+            const prevM=()=>{if(lbMonth===0){setLbMonth(11);setLbYear(lbYear-1);}else setLbMonth(lbMonth-1);};
+            const nextM=()=>{if(lbMonth===11){setLbMonth(0);setLbYear(lbYear+1);}else setLbMonth(lbMonth+1);};
+            const isCurrentMonth=lbYear===curY&&lbMonth===curM;
+            const totalRev=ranked.reduce((s,c)=>s+c.rev,0);
+            return <div style={{background:t.sf,borderRadius:12,border:`1px solid ${t.bd}`,padding:14,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <h3 style={{fontSize:14,fontWeight:800,color:t.tx}}>🏆 Bảng xếp hạng khách hàng</h3>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,marginBottom:12}}>
+                <button onClick={prevM} style={{border:"none",background:t.ab,color:t.ac,borderRadius:6,padding:"4px 10px",fontSize:14,cursor:"pointer",fontWeight:700}}>‹</button>
+                <span style={{fontSize:14,fontWeight:700,color:t.tx,minWidth:120,textAlign:"center"}}>{monthNames[lbMonth]} {lbYear}</span>
+                <button onClick={nextM} disabled={isCurrentMonth} style={{border:"none",background:isCurrentMonth?t.bd:t.ab,color:isCurrentMonth?t.dm:t.ac,borderRadius:6,padding:"4px 10px",fontSize:14,cursor:"pointer",fontWeight:700}}>›</button>
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <div style={{flex:1,background:dark?"#1C1917":"#FFF7ED",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:9,color:"#D97706",fontWeight:600}}>DOANH THU</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#D97706"}}>¥{fmt(totalRev)}</div>
+                </div>
+                <div style={{flex:1,background:dark?"#1C1917":"#EFF6FF",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:9,color:t.ac,fontWeight:600}}>KHÁCH</div>
+                  <div style={{fontSize:16,fontWeight:800,color:t.ac}}>{ranked.length}</div>
+                </div>
+                <div style={{flex:1,background:dark?"#1C1917":"#F0FDF4",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:9,color:"#16A34A",fontWeight:600}}>ĐƠN</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#16A34A"}}>{mOrders.length}</div>
+                </div>
+              </div>
+              {ranked.length===0?<div style={{textAlign:"center",padding:20,color:t.dm}}>Chưa có đơn trong {monthNames[lbMonth]}</div>:
+              <div style={{maxHeight:400,overflowY:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{borderBottom:`2px solid ${t.bd}`,position:"sticky",top:0,background:t.sf}}>
+                    <th style={{padding:"6px 4px",textAlign:"center",color:t.dm,fontSize:10,width:30}}>#</th>
+                    <th style={{padding:"6px 4px",textAlign:"left",color:t.dm,fontSize:10}}>Khách</th>
+                    <th style={{padding:"6px 4px",textAlign:"right",color:t.dm,fontSize:10}}>Đơn</th>
+                    <th style={{padding:"6px 4px",textAlign:"right",color:t.dm,fontSize:10}}>SL</th>
+                    <th style={{padding:"6px 4px",textAlign:"right",color:t.dm,fontSize:10}}>Doanh thu</th>
+                  </tr></thead>
+                  <tbody>{ranked.map((c,i)=>{
+                    const pct=totalRev>0?Math.round(c.rev/totalRev*100):0;
+                    return <tr key={i} style={{borderBottom:`1px solid ${t.bd}`,background:i<3?(dark?"#292524":"#FFFBEB"):"transparent"}} onClick={()=>setMCust({name:c.name,fb:c.fb||""})}>
+                      <td style={{padding:"8px 4px",textAlign:"center",fontSize:i<3?16:12}}>{i<3?medals[i]:i+1}</td>
+                      <td style={{padding:"8px 4px",fontWeight:i<3?700:400,color:t.tx,cursor:"pointer"}}>
+                        <div>{c.name}</div>
+                        {pct>=5&&<div style={{marginTop:2,height:3,background:t.bd,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:i===0?"#F59E0B":i===1?"#94A3B8":i===2?"#CD7F32":t.ac,borderRadius:2}}/></div>}
+                      </td>
+                      <td style={{padding:"8px 4px",textAlign:"right",color:t.dm}}>{c.items}</td>
+                      <td style={{padding:"8px 4px",textAlign:"right",color:t.dm}}>{c.qty}</td>
+                      <td style={{padding:"8px 4px",textAlign:"right",fontWeight:700,color:i===0?"#D97706":i<3?t.ac:t.tx}}>¥{fmt(c.rev)}</td>
+                    </tr>;})}</tbody>
+                </table>
+              </div>}
+            </div>;
+          })()}
         </div>}
 
         {/* ORDERS */}
