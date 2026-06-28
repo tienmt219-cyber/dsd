@@ -121,6 +121,42 @@ async function updateSurplusTT(maSP: string, size: string, color: string, newTT:
   }
 }
 
+async function autoMatchSurplusToOrders(maSP: string, size: string, color: string): Promise<number> {
+  const surplus = await findSurplus(maSP, size, color);
+  if (!surplus || surplus.sl <= 0) return 0;
+
+  const pending = await prisma.dtOrder.findMany({
+    where: { trangThai: "CHƯA ĐẶT", maSP: { not: "" } },
+    orderBy: { ngayOd: "asc" },
+  });
+
+  let remaining = surplus.sl;
+  let matched = 0;
+  const newStatus = surplus.trangThai || "Về kho";
+
+  for (const o of pending) {
+    if (remaining <= 0) break;
+    if (norm(o.maSP) !== maSP || norm(o.size) !== size || norm(o.color) !== color) continue;
+    if (o.soLuong <= remaining) {
+      await prisma.dtOrder.update({
+        where: { rowIndex: o.rowIndex },
+        data: { trangThai: newStatus, note: (o.note ? o.note + " " : "") + "📦DƯ" },
+      });
+      remaining -= o.soLuong;
+      matched += o.soLuong;
+    }
+  }
+
+  if (matched > 0) {
+    if (remaining <= 0) {
+      await prisma.dtSurplus.delete({ where: { id: surplus.id } });
+    } else {
+      await prisma.dtSurplus.update({ where: { id: surplus.id }, data: { sl: remaining } });
+    }
+  }
+  return matched;
+}
+
 // ── row index ────────────────────────────────────────────────
 
 async function nextRowIndex(): Promise<number> {
@@ -478,12 +514,14 @@ export async function POST(request: NextRequest) {
         await prisma.dtOrder.update({ where: { rowIndex: ri }, data: { trangThai: "Đã xoá" } });
 
         let returnedQty = 0;
+        let autoMatched = 0;
         if (qty > 0 && maSP && oldStatus !== "CHƯA ĐẶT") {
           const surplusTT = oldStatus === "Chờ hàng" ? "Chờ hàng" : "Về kho";
           await addOrUpdateSurplus(maSP, size, color, qty, surplusTT);
           returnedQty = qty;
+          autoMatched = await autoMatchSurplusToOrders(maSP, size, color);
         }
-        result = { success: true, returned: returnedQty };
+        result = { success: true, returned: returnedQty, matched: autoMatched };
         break;
       }
 
@@ -760,7 +798,8 @@ export async function POST(request: NextRequest) {
         const qty = Number(body.qty ?? body.soLuong) || 0;
         if (!maSP || qty <= 0) return json({ error: "Thiếu mã SP hoặc SL" });
         await addOrUpdateSurplus(maSP, size, color, qty, String(body.status ?? body.trangThai ?? "Chờ hàng"));
-        result = { success: true };
+        const surplusAutoMatched = await autoMatchSurplusToOrders(maSP, size, color);
+        result = { success: true, matched: surplusAutoMatched };
         break;
       }
 
