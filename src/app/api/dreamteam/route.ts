@@ -309,18 +309,27 @@ export async function POST(request: NextRequest) {
         const size = norm(o.size);
         const color = norm(o.color);
         const qty = Number(o.soLuong) || 1;
+        const confirmSurplus = Boolean(body.confirmSurplus);
         let status = "CHƯA ĐẶT";
         let autoNote: string | null = null;
         let surplusMatched = 0;
+        let surplusInfo: Record<string, unknown> | null = null;
 
-        const surplusResult = await useSurplus(maSP, size, color, qty);
-        if (surplusResult) {
-          surplusMatched = surplusResult.matched;
-          if (surplusResult.matched >= qty) {
-            status = surplusResult.tt;
-            autoNote = "📦DƯ";
+        const surplusFound = await findSurplus(maSP, size, color);
+        if (surplusFound && surplusFound.sl > 0) {
+          if (confirmSurplus) {
+            const sr = await useSurplus(maSP, size, color, qty);
+            if (sr) {
+              surplusMatched = sr.matched;
+              if (sr.matched >= qty) {
+                status = sr.tt;
+                autoNote = "📦DƯ";
+              } else {
+                autoNote = `📦DƯ ${sr.matched}/${qty}`;
+              }
+            }
           } else {
-            autoNote = `📦DƯ ${surplusResult.matched}/${qty}`;
+            surplusInfo = { ma: maSP, sz: size, cl: color, sl: surplusFound.sl, tt: surplusFound.trangThai || "Về kho" };
           }
         }
 
@@ -343,7 +352,7 @@ export async function POST(request: NextRequest) {
                 note: autoNote,
               },
             });
-            result = { success: true, row: ri, autoStatus: surplusResult && surplusResult.matched >= qty ? surplusResult.tt : null, surplusMatched };
+            result = { success: true, row: ri, autoStatus: confirmSurplus && surplusMatched >= qty ? status : null, surplusMatched, surplusInfo };
             break;
           } catch (err: unknown) {
             if (attempt === 2 || !(err instanceof Error) || !err.message.includes("Unique")) throw err;
@@ -514,14 +523,21 @@ export async function POST(request: NextRequest) {
         await prisma.dtOrder.update({ where: { rowIndex: ri }, data: { trangThai: "Đã xoá" } });
 
         let returnedQty = 0;
-        let autoMatched = 0;
+        let pendingMatches: Array<Record<string, unknown>> = [];
         if (qty > 0 && maSP && oldStatus !== "CHƯA ĐẶT") {
           const surplusTT = oldStatus === "Chờ hàng" ? "Chờ hàng" : "Về kho";
           await addOrUpdateSurplus(maSP, size, color, qty, surplusTT);
           returnedQty = qty;
-          autoMatched = await autoMatchSurplusToOrders(maSP, size, color);
+          const pending = await prisma.dtOrder.findMany({
+            where: { trangThai: "CHƯA ĐẶT", maSP: { not: "" } },
+            orderBy: { ngayOd: "asc" },
+          });
+          for (const p of pending) {
+            if (norm(p.maSP) !== maSP || norm(p.size) !== size || norm(p.color) !== color) continue;
+            pendingMatches.push({ rowIndex: p.rowIndex, tenKhach: p.tenKhach, soLuong: p.soLuong, ngayOd: p.ngayOd instanceof Date ? p.ngayOd.toISOString().slice(0, 10) : String(p.ngayOd ?? "") });
+          }
         }
-        result = { success: true, returned: returnedQty, matched: autoMatched };
+        result = { success: true, returned: returnedQty, pendingMatches };
         break;
       }
 
@@ -798,8 +814,36 @@ export async function POST(request: NextRequest) {
         const qty = Number(body.qty ?? body.soLuong) || 0;
         if (!maSP || qty <= 0) return json({ error: "Thiếu mã SP hoặc SL" });
         await addOrUpdateSurplus(maSP, size, color, qty, String(body.status ?? body.trangThai ?? "Chờ hàng"));
-        const surplusAutoMatched = await autoMatchSurplusToOrders(maSP, size, color);
-        result = { success: true, matched: surplusAutoMatched };
+        result = { success: true };
+        break;
+      }
+
+      // ══════ applySurplusToOrder — user confirmed surplus match for a specific order ══════
+      case "applySurplusToOrder": {
+        const ri = Number(body.rowIndex);
+        const order = await prisma.dtOrder.findUnique({ where: { rowIndex: ri } });
+        if (!order) return json({ error: "Đơn không tồn tại" });
+        const maSP = norm(order.maSP), size = norm(order.size), color = norm(order.color);
+        const sr = await useSurplus(maSP, size, color, order.soLuong);
+        if (!sr) return json({ error: "Hết hàng dư" });
+        const newStatus = sr.matched >= order.soLuong ? sr.tt : order.trangThai;
+        const noteAdd = sr.matched >= order.soLuong ? "📦DƯ" : `📦DƯ ${sr.matched}/${order.soLuong}`;
+        await prisma.dtOrder.update({
+          where: { rowIndex: ri },
+          data: { trangThai: newStatus, note: (order.note ? order.note + " " : "") + noteAdd },
+        });
+        result = { success: true, newStatus, matched: sr.matched };
+        break;
+      }
+
+      // ══════ confirmAutoMatch — user confirmed surplus → pending orders ══════
+      case "confirmAutoMatch": {
+        const maSP = norm(body.maSP);
+        const size = norm(body.size);
+        const color = norm(body.color);
+        if (!maSP) return json({ error: "Thiếu mã SP" });
+        const matched = await autoMatchSurplusToOrders(maSP, size, color);
+        result = { success: true, matched };
         break;
       }
 

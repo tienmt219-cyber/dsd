@@ -899,13 +899,24 @@ function App(){
   // ★ Bùng hàng — soft delete + trả lại kho
   const cancelOrder=async(o)=>{
     if(!confirm(`Bùng hàng: ${o["Tên khách"]} - ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}?\n\nĐơn sẽ bị xoá + hàng trả lại kho`))return;
-    // 1. Soft delete đơn
-    await safePost({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}},"");
-    // 2. Trả hàng lại kho (nếu đã về kho)
+    const r=await POST({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}});
+    if(r.error){msg("❌ "+r.error);if(r.needReload)load();return;}
     if(o["TRẠNG THÁI"]==="Về kho"){
-      await safePost({action:"addStock",item:{maSP:String(o["Mã SP"]||""),size:String(o["SIZE"]||""),color:String(o["COLOR"]||""),soLuong:Number(o["Số lượng"]||1)}},"");
+      await POST({action:"addStock",item:{maSP:String(o["Mã SP"]||""),size:String(o["SIZE"]||""),color:String(o["COLOR"]||""),soLuong:Number(o["Số lượng"]||1)}});
     }
-    msg(`🚫 ${o["Tên khách"]}: bùng hàng → xoá + trả kho`);
+    if(r.pendingMatches&&r.pendingMatches.length>0){
+      const pm=r.pendingMatches;
+      const listTxt=pm.slice(0,5).map(p=>`  • ${p.tenKhach} x${p.soLuong} (${p.ngayOd})`).join("\n");
+      if(confirm(`📦 Hàng dư ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]}.\n\nCó ${pm.length} đơn CHƯA ĐẶT cùng SKU (ưu tiên cũ nhất):\n${listTxt}\n\nTự động khớp hàng dư cho các đơn này?`)){
+        const mr=await POST({action:"confirmAutoMatch",maSP:String(o["Mã SP"]||""),size:String(o["SIZE"]||""),color:String(o["COLOR"]||"")});
+        msg(`🚫 Bùng hàng → xoá + ${mr.matched||0} đơn auto khớp hàng dư`);
+      }else{
+        msg(`🚫 ${o["Tên khách"]}: bùng hàng → xoá + trả kho (giữ hàng dư)`);
+      }
+    }else{
+      msg(`🚫 ${o["Tên khách"]}: bùng hàng → xoá + trả kho`);
+    }
+    load();
   };
 
   // ★ Đặt GZ — gom theo SP+Size+Color
@@ -940,7 +951,18 @@ function App(){
     <style>{`*{box-sizing:border-box;margin:0;padding:0}input,select,button{font-family:inherit}input:focus,select:focus{outline:none}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${t.bd};border-radius:2px}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     {busy&&<div className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.2)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}><div className="dt-pop" style={{background:t.sf,padding:"16px 28px",borderRadius:14,fontSize:14,fontWeight:600,color:t.tx,boxShadow:"0 8px 30px rgba(0,0,0,.15)"}}>⏳ Đang xử lý...</div></div>}
     {toast&&<div className="dt-toast" style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:t.sf,padding:"11px 22px",borderRadius:12,fontSize:13.5,fontWeight:600,zIndex:300,boxShadow:"0 8px 30px rgba(0,0,0,.18)",border:`1px solid ${t.bd}`,color:t.tx,maxWidth:"calc(100vw - 32px)"}}>{toast}</div>}
-    <Modal open={mAdd} onClose={()=>setMAdd(false)} title="✏️ Tạo đơn" t={t}><AddForm orders={active} catalog={catalog} addrs={addrs} surplusData={surplusData} safePost={safePost} onAdd={o=>{safePost({action:"addOrder",order:o},"Tạo đơn!");}} t={t}/></Modal>
+    <Modal open={mAdd} onClose={()=>setMAdd(false)} title="✏️ Tạo đơn" t={t}><AddForm orders={active} catalog={catalog} addrs={addrs} surplusData={surplusData} safePost={safePost} onAdd={async o=>{
+      const r=await POST({action:"addOrder",order:o});
+      if(r.error){msg("❌ "+r.error);return;}
+      if(r.surplusInfo&&r.row){
+        const s=r.surplusInfo;
+        if(confirm(`📦 Có ${s.sl} hàng dư ${s.ma} ${s.sz} ${s.cl} (${s.tt}).\nKhớp với đơn này → chuyển trạng thái "${s.tt}"?`)){
+          const mr=await POST({action:"applySurplusToOrder",rowIndex:r.row});
+          msg(mr.success?`✅ Tạo đơn + khớp hàng dư → ${mr.newStatus}`:"❌ "+mr.error);
+        }else{msg("✅ Tạo đơn! (giữ CHƯA ĐẶT)");}
+      }else{msg("✅ Tạo đơn!"+(r.autoStatus?" → "+r.autoStatus:""));}
+      load();
+    }} t={t}/></Modal>
     <Modal open={!!mCust} onClose={()=>setMCust(null)} title={`👤 ${mCust?.name||""}`} t={t}>{mCust&&<CustProfile name={mCust.name} fb={mCust.fb} orders={active} addrs={addrs} safePost={safePost} msg={msg} t={t}/>}</Modal>
     <Modal open={!!mEdit} onClose={()=>setMEdit(null)} title="✏️ Sửa đơn" t={t}>{mEdit&&<EditForm order={mEdit} catalog={catalog} safePost={safePost} onDone={()=>setMEdit(null)} t={t} msg={msg}/>}</Modal>
 
