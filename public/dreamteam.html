@@ -901,9 +901,6 @@ function App(){
     if(!confirm(`Bùng hàng: ${o["Tên khách"]} - ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}?\n\nĐơn sẽ bị xoá + hàng trả lại kho`))return;
     const r=await POST({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}});
     if(r.error){msg("❌ "+r.error);if(r.needReload)load();return;}
-    if(o["TRẠNG THÁI"]==="Về kho"){
-      await POST({action:"addStock",item:{maSP:String(o["Mã SP"]||""),size:String(o["SIZE"]||""),color:String(o["COLOR"]||""),soLuong:Number(o["Số lượng"]||1)}});
-    }
     if(r.pendingMatches&&r.pendingMatches.length>0){
       const pm=r.pendingMatches;
       const listTxt=pm.slice(0,5).map(p=>`  • ${p.tenKhach} x${p.soLuong} (${p.ngayOd})`).join("\n");
