@@ -8,10 +8,26 @@
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<style>body{margin:0;padding:0}</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.27.5/babel.min.js"></script>
+<style>
+body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font-family:inherit}
+button{-webkit-tap-highlight-color:transparent;transition:transform .12s ease,filter .15s ease,opacity .15s ease;touch-action:manipulation}
+button:active:not(:disabled){transform:scale(.96);filter:brightness(.93)}
+button:disabled{opacity:.55}
+input:focus,select:focus,textarea:focus{outline:2px solid rgba(124,58,237,.35);outline-offset:-1px}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(120,120,140,.35);border-radius:3px}
+::-webkit-scrollbar-track{background:transparent}
+@keyframes dtToastIn{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@keyframes dtFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes dtPopIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.dt-toast{animation:dtToastIn .22s ease-out}
+.dt-overlay{animation:dtFadeIn .18s ease-out}
+.dt-pop{animation:dtPopIn .2s ease-out}
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -19,8 +35,8 @@
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 const API = "/api/dreamteam";
-const PW = "dreamteam2026";
-const BANK_DEFAULT = "🇻🇳 STK Việt Nam:\nNgân hàng: Techcombank\nSTK: 8109030991196\nTên: TRINH THI PHUONG\n\n💜 PayPay: 09030991196";
+let API_KEY = localStorage.getItem("dt_api_key") || "";
+const BANK_DEFAULT = "🇯🇵 STK Nhật:\nNgân hàng: GMO あおぞらネット銀行 (ジ)\nChi nhánh: 法人営業部(101)(ホ)\nSTK: 2573738\nTên: ド ) キン\n\n🇻🇳 STK Việt Nam:\nNgân hàng: Techcombank\nSTK: 8109030991196\nTên: TRINH THI PHUONG\n\n💜 PayPay: 09030991196";
 const ST = ["CHƯA ĐẶT","Chờ hàng","Đang ship","Về kho","Đã gửi"];
 const SC = {"CHƯA ĐẶT":"#94A3B8","Chờ hàng":"#D97706","Đang ship":"#7C3AED","Về kho":"#0D9488","Đã gửi":"#16A34A","Đã xoá":"#DC2626"};
 // ★ Chi phí cố định/SP (JPY) — sửa ở đây khi thay đổi
@@ -101,25 +117,30 @@ const getAddr = (addrs, name, fb) => {
 const LT={bg:"#F8FAFC",sf:"#fff",tx:"#1E293B",dm:"#94A3B8",bd:"#EAEDF3",inp:"#F8FAFC",ac:"#7C3AED",ab:"#F3EEFF",pk:"#E8567F"};
 const DK={bg:"#0F172A",sf:"#1E293B",tx:"#F1F5F9",dm:"#64748B",bd:"#334155",inp:"#1E293B",ac:"#A78BFA",ab:"#1E1B4B",pk:"#F472B6"};
 
+function copyText(text){
+  if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text);return;}
+  const ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;left:-9999px";document.body.appendChild(ta);ta.select();document.execCommand("copy");document.body.removeChild(ta);
+}
+
 async function GET(){
   for(let retry=0;retry<2;retry++){
-    const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
-    try{const r=await fetch(API,{signal:c.signal});clearTimeout(t);return r.json();}
-    catch(e){clearTimeout(t);if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
+    const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
+    try{const r=await fetch(API,{signal:c.signal,headers:{"x-api-key":API_KEY}});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("AUTH");}return j;}
+    catch(e){clearTimeout(t);if(e.message==="AUTH")throw e;if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
   }
 }
 async function POST(b){
-  for(let retry=0;retry<3;retry++){
-    const c=new AbortController();const t=setTimeout(()=>c.abort(),30000);
-    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);return r.json();}
-    catch(e){clearTimeout(t);if(retry<2){await new Promise(r=>setTimeout(r,2000));continue;}throw new Error("Kết nối chậm — thử lại");}
+  for(let retry=0;retry<2;retry++){
+    const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
+    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("Phiên hết hạn — reload trang");}return j;}
+    catch(e){clearTimeout(t);if(e.message&&e.message.includes("hết hạn"))throw e;if(retry<1){await new Promise(r=>setTimeout(r,1000));continue;}throw new Error("Kết nối chậm — thử lại");}
   }
 }
 
 function Modal({open,onClose,title,children,t}){
   if(!open)return null;
-  return <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(4px)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div onClick={e=>e.stopPropagation()} style={{background:t.sf,borderRadius:20,width:"100%",maxWidth:520,maxHeight:"90vh",overflow:"auto",border:`1px solid ${t.bd}`}}>
+  return <div onClick={onClose} className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",backdropFilter:"blur(4px)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div onClick={e=>e.stopPropagation()} className="dt-pop" style={{background:t.sf,borderRadius:20,width:"100%",maxWidth:520,maxHeight:"90vh",overflow:"auto",border:`1px solid ${t.bd}`,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
       <div style={{padding:"14px 20px",borderBottom:`1px solid ${t.bd}`,display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,background:t.sf,borderRadius:"20px 20px 0 0",zIndex:2}}>
         <h3 style={{margin:0,fontSize:15,fontWeight:700,color:t.tx}}>{title}</h3>
         <button onClick={onClose} style={{width:28,height:28,borderRadius:8,border:"none",background:t.bd,cursor:"pointer",fontSize:13,color:t.dm}}>✕</button>
@@ -525,7 +546,7 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
   const [editing,setEditing]=useState(false);
   const [val,setVal]=useState(String(value??""));
   const ref=useRef(null);
-  useEffect(()=>{setVal(String(value??""));},[value]);
+  useEffect(()=>{if(!editing)setVal(String(value??""));},[value,editing]);
   useEffect(()=>{if(editing&&ref.current){ref.current.focus();if(type!=="select")ref.current.select();}});
   const save=()=>{
     setEditing(false);
@@ -548,13 +569,14 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
 
 // ═══ MAIN ═══
 function App(){
-  const [auth,setAuth]=useState(true);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
+  const [auth,setAuth]=useState(!!API_KEY);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
   const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt_dark",v?"1":"0")}catch(e){}};
   const [orders,setOrders]=useState([]);const [stock,setStock]=useState([]);const [catalog,setCatalog]=useState([]);const [addrs,setAddrs]=useState({});const [surplus,setSurplus]=useState([]);const [emsHistory,setEmsHistory]=useState([]);
   const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [toast,setToast]=useState(null);const [lastSync,setLastSync]=useState(null);
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
   const [search,setSearch]=useState("");const [filt,setFilt]=useState("Tất cả");const [custFilter,setCustFilter]=useState("");
-  const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");
+  const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");const [shipSearch,setShipSearch]=useState("");
+  const _now=new Date();const [lbMonth,setLbMonth]=useState(_now.getMonth());const [lbYear,setLbYear]=useState(_now.getFullYear());
   const ckOverrides=useRef(null);
   if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
   const saveCkOverrides=function(){try{localStorage.setItem("dt_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
@@ -662,7 +684,7 @@ function App(){
   const load=useCallback(async s=>{if(!s)setLoading(true);try{const d=await GET();if(d.success)sync(d);}catch(e){if(!s)msg("❌ "+e.message);}if(!s)setLoading(false);},[msg,sync]);
   useEffect(()=>{if(auth)load();},[auth,load]);
   const busyRef=useRef(false);
-  useEffect(()=>{busyRef.current=busy;},[busy]);
+  useEffect(()=>{busyRef.current=busy;if(busy){const t=setTimeout(()=>{setBusy(false);msg("⚠️ Quá lâu — đã mở khoá. Thử lại.");},15000);return()=>clearTimeout(t);}},[busy]);
   useEffect(()=>{if(!auth)return;const iv=setInterval(()=>{if(!busyRef.current)load(true);},60000);return()=>clearInterval(iv);},[auth,load]);
   // ★ Ctrl+N → thêm đơn, Ctrl+R → refresh, Esc → đóng modal
   useEffect(()=>{const h=e=>{if(e.ctrlKey&&e.key==="n"){e.preventDefault();setMAdd(true);}if(e.ctrlKey&&e.key==="r"){e.preventDefault();load();msg("🔄 Đang tải...");}if(e.key==="Escape"){setMAdd(false);setMCust(null);}};window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);},[load,msg]);
@@ -675,7 +697,8 @@ function App(){
       if(r.autoStatus)extra=` 🟢 Hàng dư → ${r.autoStatus}`;
       if(r.autoCount>0)extra=` 🟢 ${r.autoCount} đơn auto từ hàng dư`;
       if(r.matched>0)extra=` (${r.matched} đơn → Về kho)`;
-      if(okMsg)msg(okMsg+extra);if(r.data)sync(r.data);else load(true);}}
+      if(okMsg)msg(okMsg+extra);
+      if(r.data){sync(r.data);}else{setBusy(false);load(true);return ok;}}}
     catch(e){msg("❌ "+e.message);load(true);}
     setBusy(false);return ok;
   },[msg,load,sync]);
@@ -730,13 +753,13 @@ function App(){
       const cost=(nhap+SHIP_GZ+BOSS_PER_ITEM)*qty;
       return s+(Number(x["Giá sp"])||0)*qty-cost;
     },0);
-    const cust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"")+"|"+String(x["Link fb"]||"")))].length;
+    const cust=[...new Set(allValid.map(x=>x["Tên khách"]))].length;
     const overdue=allValid.filter(x=>{if(["Đã gửi","Về kho"].includes(x["TRẠNG THÁI"]))return false;const d=String(x["NGÀY OD"]||"").slice(0,10);return d&&daysAgo(d)>21;}).length;
     const byDate={};allValid.forEach(x=>{const d=String(x["NGÀY OD"]||"").slice(0,10);if(d)byDate[d]=(byDate[d]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
     const revChart=Object.keys(byDate).sort().slice(-7).map(d=>({l:d.slice(5),v:byDate[d]}));
     const spM={};allValid.forEach(x=>{const k=String(x["Mã SP"]);if(!spM[k])spM[k]={m:k,n:x["Tên Sp"],q:0};spM[k].q+=Number(x["Số lượng"]||0);});
     const topSP=Object.values(spM).sort((a,b)=>b.q-a.q).slice(0,5);
-    const cuM={};allValid.forEach(x=>{const k=String(x["Tên khách"]||"")+"|"+normalizeFB(String(x["Link fb"]||""));if(!cuM[k])cuM[k]={n:String(x["Tên khách"]||""),fb:String(x["Link fb"]||""),r:0};cuM[k].r+=(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
+    const cuM={};allValid.forEach(x=>{const k=normName(String(x["Tên khách"]||""));if(!k)return;if(!cuM[k])cuM[k]={n:k,fb:String(x["Link fb"]||""),r:0};cuM[k].r+=(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
     const topCust=Object.values(cuM).sort((a,b)=>b.r-a.r).slice(0,5);
     const pendingDays=allValid.filter(x=>!["Đã gửi","Đã xoá"].includes(x["TRẠNG THÁI"])).map(x=>daysAgo(String(x["NGÀY OD"]||"").slice(0,10))).filter(d=>d>0);
     const avgDays=pendingDays.length?Math.round(pendingDays.reduce((a,b)=>a+b,0)/pendingDays.length):0;
@@ -752,7 +775,7 @@ function App(){
   // ★ HÀNG DƯ — đọc từ tab HÀNG DƯ (không tính toán)
   const surplusData=useMemo(()=>{
     return surplus.filter(s=>Number(s["SL dư"]||0)>0).map(s=>({
-      id:s.id,ma:s["Mã SP"],sz:s["Size"],cl:s["Color"],
+      id:s._rowIndex,ma:s["Mã SP"],sz:s["Size"],cl:s["Color"],
       sl:Number(s["SL dư"]||0),tt:s["Trạng thái"]||""
     }));
   },[surplus]);
@@ -818,36 +841,17 @@ function App(){
     saveCkOverrides();
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"")+" 💰CK "+today}:o));
     msg(`💰 ${customerName} đang lưu CK...`);
-    // 2. Gọi API + verify
+    // 2. Gọi API
     setBusy(true);
     try{
       const postItems=customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}));
       const r=await POST({action:"batchMarkCK",items:postItems});
       if(r.error){msg("❌ CK lỗi: "+r.error);setBusy(false);return;}
-      // 3. Verify: đọc lại từ server, check đã lưu chưa
-      let verified=false;
-      for(let attempt=0;attempt<3;attempt++){
-        await new Promise(res=>setTimeout(res,2000));
-        try{
-          const fresh=await GET();
-          if(fresh.success&&fresh.orders){
-            const ckRows=fresh.orders.filter(o=>rowSet.has(o._rowIndex));
-            const allMarked=ckRows.every(o=>(o._note||"").includes("💰CK"));
-            if(allMarked){
-              verified=true;
-              customerItems.forEach(o=>{ckOverrides.current.delete(o._rowIndex);});
-              saveCkOverrides();
-              sync(fresh);
-              msg(`✅ ${customerName} CK ¥${fmt(customerRev)} — đã lưu!`);
-              break;
-            }
-          }
-        }catch(e){}
-        if(attempt<2)msg(`⏳ Đang verify CK... (${attempt+2}/3)`);
-      }
-      if(!verified){
-        msg(`⚠️ ${customerName} CK — server chậm, đang giữ tạm. Sẽ tự đồng bộ.`);
-      }
+      // Giữ ckOverrides — sync() tự xoá khi data server đã có 💰CK (chống GET cũ đè mất CK)
+      msg(`✅ ${customerName} CK ¥${fmt(customerRev)} — đã lưu!`);
+      setBusy(false);
+      GET().then(fresh=>{if(fresh.success)sync(fresh);}).catch(()=>{});
+      return;
     }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
@@ -859,27 +863,16 @@ function App(){
     saveCkOverrides();
     setOrders(prev=>prev.map(o=>rowSet.has(o._rowIndex)?{...o,_note:(o._note||"").replace(/\s*💰CK\s*\d{4}-\d{2}-\d{2}/,"")}:o));
     msg(`↩ ${customerName}: đang bỏ CK...`);
-    // 2. Gọi API + verify
+    // 2. Gọi API
     setBusy(true);
     try{
       const r=await POST({action:"batchUnmarkCK",items:customerItems.map(o=>({rowIndex:o._rowIndex,tenKhach:customerName,maSP:String(o["Mã SP"]||"")}))});
       if(r.error){msg("❌ "+r.error);setBusy(false);return;}
       if(r.unmarked===0){msg("⚠️ Không bỏ CK được");setBusy(false);return;}
-      // Verify
-      for(let attempt=0;attempt<3;attempt++){
-        await new Promise(res=>setTimeout(res,2000));
-        try{
-          const fresh=await GET();
-          if(fresh.success&&fresh.orders){
-            const rows=fresh.orders.filter(o=>rowSet.has(o._rowIndex));
-            if(rows.every(o=>!(o._note||"").includes("💰CK"))){
-              sync(fresh);
-              msg(`✅ ${customerName}: đã bỏ CK`);
-              break;
-            }
-          }
-        }catch(e){}
-      }
+      msg(`✅ ${customerName}: đã bỏ CK`);
+      setBusy(false);
+      GET().then(fresh=>{if(fresh.success)sync(fresh);}).catch(()=>{});
+      return;
     }catch(e){msg("❌ "+e.message);}
     setBusy(false);
   };
@@ -898,7 +891,7 @@ function App(){
     const shipLine=shipFee?`\n📮 Ship: ¥${fmt(shipFee)}`:"";
     const trackLine=tracking?`\n🚚 Mã vận đơn: ${tracking}`:"";
     const total=money+(Number(shipFee)||0);
-    navigator.clipboard?.writeText(`Hàng c đặt về rồi ạ\n\n${lines}${shipLine}\n\n💰 Tổng CK: ¥${fmt(total)}\n\n━━━━━━━━━━━━\n${bank}\n━━━━━━━━━━━━${trackLine}`);
+    copyText(`Hàng c đặt về rồi ạ\n\n${lines}${shipLine}\n\n💰 Tổng CK: ¥${fmt(total)}\n\n━━━━━━━━━━━━\n${bank}\n━━━━━━━━━━━━${trackLine}`);
     if(cust.fb)window.open(cust.fb,"_blank");
     msg(`📋 ${cust.name}: đã copy`);
   };
@@ -906,13 +899,21 @@ function App(){
   // ★ Bùng hàng — soft delete + trả lại kho
   const cancelOrder=async(o)=>{
     if(!confirm(`Bùng hàng: ${o["Tên khách"]} - ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}?\n\nĐơn sẽ bị xoá + hàng trả lại kho`))return;
-    // 1. Soft delete đơn
-    await safePost({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}},"");
-    // 2. Trả hàng lại kho (nếu đã về kho)
-    if(o["TRẠNG THÁI"]==="Về kho"){
-      await safePost({action:"addStock",item:{maSP:String(o["Mã SP"]||""),size:String(o["SIZE"]||""),color:String(o["COLOR"]||""),soLuong:Number(o["Số lượng"]||1)}},"");
+    const r=await POST({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}});
+    if(r.error){msg("❌ "+r.error);if(r.needReload)load();return;}
+    if(r.pendingMatches&&r.pendingMatches.length>0){
+      const pm=r.pendingMatches;
+      const listTxt=pm.slice(0,5).map(p=>`  • ${p.tenKhach} x${p.soLuong} (${p.ngayOd})`).join("\n");
+      if(confirm(`📦 Hàng dư ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]}.\n\nCó ${pm.length} đơn CHƯA ĐẶT cùng SKU (ưu tiên cũ nhất):\n${listTxt}\n\nTự động khớp hàng dư cho các đơn này?`)){
+        const mr=await POST({action:"confirmAutoMatch",maSP:String(o["Mã SP"]||""),size:String(o["SIZE"]||""),color:String(o["COLOR"]||"")});
+        msg(`🚫 Bùng hàng → xoá + ${mr.matched||0} đơn auto khớp hàng dư`);
+      }else{
+        msg(`🚫 ${o["Tên khách"]}: bùng hàng → xoá + trả kho (giữ hàng dư)`);
+      }
+    }else{
+      msg(`🚫 ${o["Tên khách"]}: bùng hàng → xoá + trả kho`);
     }
-    msg(`🚫 ${o["Tên khách"]}: bùng hàng → xoá + trả kho`);
+    load();
   };
 
   // ★ Đặt GZ — gom theo SP+Size+Color
@@ -938,23 +939,34 @@ function App(){
     ds:gzData.reduce((s,g)=>s+g.dangShip,0)
   }),[gzData]);
 
-  // auth check removed — handled by VPS access
+  if(!auth)return <LoginScreen onLogin={()=>setAuth(true)} t={t}/>;
 
   const chuaCKcount=useMemo(()=>shipped.filter(o=>!(o._note||"").includes("💰CK")&&!["Đã xoá","Lưu trữ"].includes(o["TRẠNG THÁI"])).length,[shipped]);
   const NAV=[{id:"dash",icon:"📊",l:"Dashboard"},{id:"orders",icon:"📋",l:"Đơn",n:active.length},{id:"gz",icon:"🏭",l:"Đặt GZ",n:gzCounts.cd},{id:"ems",icon:"✈️",l:"EMS",n:gzCounts.ch||""},{id:"ship",icon:"🚚",l:"Chờ gửi",n:stats.byS["Về kho"]||0},{id:"stock",icon:"📦",l:"Kho",n:stock.length},{id:"product",icon:"🏷️",l:"SP",n:catalog.length},{id:"tools",icon:"🛠",l:"Tools"},{id:"history",icon:"💳",l:chuaCKcount>0?`CK(${chuaCKcount})`:"Đã gửi",n:chuaCKcount||shipped.length}];
 
   return <div style={{display:"flex",minHeight:"100vh",background:t.bg,fontFamily:"system-ui,-apple-system,sans-serif",flexDirection:mob?"column":"row"}}>
     <style>{`*{box-sizing:border-box;margin:0;padding:0}input,select,button{font-family:inherit}input:focus,select:focus{outline:none}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${t.bd};border-radius:2px}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
-    {busy&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.2)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:t.sf,padding:"16px 28px",borderRadius:14,fontSize:14,fontWeight:600,color:t.tx,boxShadow:"0 8px 30px rgba(0,0,0,.15)"}}>⏳ Đang xử lý...</div></div>}
-    {toast&&<div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:t.sf,padding:"10px 20px",borderRadius:12,fontSize:13,fontWeight:600,zIndex:300,boxShadow:"0 8px 30px rgba(0,0,0,.15)",border:`1px solid ${t.bd}`,color:t.tx}}>{toast}</div>}
-    <Modal open={mAdd} onClose={()=>setMAdd(false)} title="✏️ Tạo đơn" t={t}><AddForm orders={active} catalog={catalog} addrs={addrs} surplusData={surplusData} safePost={safePost} onAdd={o=>{safePost({action:"addOrder",order:o},"Tạo đơn!");}} t={t}/></Modal>
+    {busy&&<div className="dt-overlay" style={{position:"fixed",inset:0,background:"rgba(0,0,0,.2)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center"}}><div className="dt-pop" style={{background:t.sf,padding:"16px 28px",borderRadius:14,fontSize:14,fontWeight:600,color:t.tx,boxShadow:"0 8px 30px rgba(0,0,0,.15)"}}>⏳ Đang xử lý...</div></div>}
+    {toast&&<div className="dt-toast" style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",background:t.sf,padding:"11px 22px",borderRadius:12,fontSize:13.5,fontWeight:600,zIndex:300,boxShadow:"0 8px 30px rgba(0,0,0,.18)",border:`1px solid ${t.bd}`,color:t.tx,maxWidth:"calc(100vw - 32px)"}}>{toast}</div>}
+    <Modal open={mAdd} onClose={()=>setMAdd(false)} title="✏️ Tạo đơn" t={t}><AddForm orders={active} catalog={catalog} addrs={addrs} surplusData={surplusData} safePost={safePost} onAdd={async o=>{
+      const r=await POST({action:"addOrder",order:o});
+      if(r.error){msg("❌ "+r.error);return;}
+      if(r.surplusInfo&&r.row){
+        const s=r.surplusInfo;
+        if(confirm(`📦 Có ${s.sl} hàng dư ${s.ma} ${s.sz} ${s.cl} (${s.tt}).\nKhớp với đơn này → chuyển trạng thái "${s.tt}"?`)){
+          const mr=await POST({action:"applySurplusToOrder",rowIndex:r.row});
+          msg(mr.success?`✅ Tạo đơn + khớp hàng dư → ${mr.newStatus}`:"❌ "+mr.error);
+        }else{msg("✅ Tạo đơn! (giữ CHƯA ĐẶT)");}
+      }else{msg("✅ Tạo đơn!"+(r.autoStatus?" → "+r.autoStatus:""));}
+      load();
+    }} t={t}/></Modal>
     <Modal open={!!mCust} onClose={()=>setMCust(null)} title={`👤 ${mCust?.name||""}`} t={t}>{mCust&&<CustProfile name={mCust.name} fb={mCust.fb} orders={active} addrs={addrs} safePost={safePost} msg={msg} t={t}/>}</Modal>
     <Modal open={!!mEdit} onClose={()=>setMEdit(null)} title="✏️ Sửa đơn" t={t}>{mEdit&&<EditForm order={mEdit} catalog={catalog} safePost={safePost} onDone={()=>setMEdit(null)} t={t} msg={msg}/>}</Modal>
 
     {!mob&&<div style={{width:170,background:t.sf,borderRight:`1px solid ${t.bd}`,display:"flex",flexDirection:"column",flexShrink:0,height:"100vh",position:"sticky",top:0}}>
       <div style={{padding:12,display:"flex",alignItems:"center",gap:6,borderBottom:`1px solid ${t.bd}`}}><span style={{fontSize:18}}>🌸</span><span style={{fontWeight:800,fontSize:13,color:t.tx}}>Dream Team</span></div>
       <div style={{flex:1,padding:"6px 4px"}}>
-        {NAV.map(n=><div key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 8px",borderRadius:8,cursor:"pointer",marginBottom:1,background:tab===n.id?t.ab:"transparent",color:tab===n.id?t.ac:t.dm,fontWeight:tab===n.id?600:400,fontSize:12}}>
+        {NAV.map(n=><div key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());setShipSearch("");}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 8px",borderRadius:8,cursor:"pointer",marginBottom:1,background:tab===n.id?t.ab:"transparent",color:tab===n.id?t.ac:t.dm,fontWeight:tab===n.id?600:400,fontSize:12}}>
           <span style={{fontSize:14}}>{n.icon}</span><span style={{flex:1}}>{n.l}</span>
           {n.n>0&&<span style={{fontSize:9,background:tab===n.id?t.ac:t.bd,color:tab===n.id?"#fff":t.dm,padding:"1px 5px",borderRadius:8,fontWeight:600}}>{n.n}</span>}
         </div>)}
@@ -969,7 +981,7 @@ function App(){
       </div>
     </div>}
 
-    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",paddingBottom:mob?64:0}}>
+    <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",paddingBottom:mob?76:0}}>
       <div style={{padding:"8px 14px",borderBottom:`1px solid ${t.bd}`,background:t.sf,display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,zIndex:10,flexWrap:"wrap"}}>
         <span style={{fontSize:11,color:t.dm}}>📋<b style={{color:t.ac}}>{active.length}</b></span>
         <span style={{fontSize:11,color:t.dm}}>💰<b style={{color:"#D97706"}}>¥{fmt(stats.rev)}</b></span>
@@ -1081,10 +1093,89 @@ function App(){
               <button onClick={()=>{
                 const today=new Date().toLocaleDateString("vi-VN");
                 const rpt=`📊 BÁO CÁO ${today}\n\n📋 Đơn: ${active.length}\n👥 Khách: ${stats.cust}\n💰 DT: ¥${fmt(stats.rev)}\n📈 Lãi: ¥${fmt(stats.profit)}\n\n${ST.map(s=>`${s}: ${stats.byS[s]||0}`).join("\n")}\n\n🏆 Top SP:\n${stats.topSP.slice(0,3).map((p,i)=>`${i+1}. ${p.m} x${p.q}`).join("\n")}`;
-                navigator.clipboard?.writeText(rpt);msg("📋 Đã copy báo cáo!");
+                copyText(rpt);msg("📋 Đã copy báo cáo!");
               }} style={{marginTop:8,width:"100%",padding:6,borderRadius:6,border:"none",background:t.ab,color:t.ac,fontSize:10,fontWeight:600,cursor:"pointer"}}>📋 Copy báo cáo</button>
             </div>
           </div>
+          {(()=>{
+            const now=new Date();
+            const curY=now.getFullYear(),curM=now.getMonth();
+            const mStart=`${lbYear}-${String(lbMonth+1).padStart(2,"0")}-01`;
+            const mEndD=new Date(lbYear,lbMonth+1,0);
+            const mEnd=`${lbYear}-${String(lbMonth+1).padStart(2,"0")}-${String(mEndD.getDate()).padStart(2,"0")}`;
+            const mOrders=orders.filter(o=>{
+              if(o["TRẠNG THÁI"]==="Đã xoá"||o["TRẠNG THÁI"]==="Lưu trữ")return false;
+              const d=String(o["NGÀY OD"]||"").slice(0,10);
+              return d>=mStart&&d<=mEnd;
+            });
+            const custMap={};
+            mOrders.forEach(o=>{
+              const n=String(o["Tên khách"]||"").trim();
+              const fb=String(o["Link fb"]||"").trim();
+              if(!n)return;
+              const key=n+"|"+normalizeFB(fb);
+              if(!custMap[key])custMap[key]={name:n,fb,rev:0,qty:0,items:0};
+              const rev=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);
+              custMap[key].rev+=rev;
+              custMap[key].qty+=Number(o["Số lượng"]||0);
+              custMap[key].items++;
+            });
+            const ranked=Object.values(custMap).sort((a,b)=>b.rev-a.rev);
+            const medals=["🥇","🥈","🥉"];
+            const monthNames=["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6","Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
+            const prevM=()=>{if(lbMonth===0){setLbMonth(11);setLbYear(lbYear-1);}else setLbMonth(lbMonth-1);};
+            const nextM=()=>{if(lbMonth===11){setLbMonth(0);setLbYear(lbYear+1);}else setLbMonth(lbMonth+1);};
+            const isCurrentMonth=lbYear===curY&&lbMonth===curM;
+            const totalRev=ranked.reduce((s,c)=>s+c.rev,0);
+            return <div style={{background:t.sf,borderRadius:12,border:`1px solid ${t.bd}`,padding:14,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <h3 style={{fontSize:14,fontWeight:800,color:t.tx}}>🏆 Bảng xếp hạng khách hàng</h3>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:12,marginBottom:12}}>
+                <button onClick={prevM} style={{border:"none",background:t.ab,color:t.ac,borderRadius:6,padding:"4px 10px",fontSize:14,cursor:"pointer",fontWeight:700}}>‹</button>
+                <span style={{fontSize:14,fontWeight:700,color:t.tx,minWidth:120,textAlign:"center"}}>{monthNames[lbMonth]} {lbYear}</span>
+                <button onClick={nextM} disabled={isCurrentMonth} style={{border:"none",background:isCurrentMonth?t.bd:t.ab,color:isCurrentMonth?t.dm:t.ac,borderRadius:6,padding:"4px 10px",fontSize:14,cursor:"pointer",fontWeight:700}}>›</button>
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <div style={{flex:1,background:dark?"#1C1917":"#FFF7ED",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:9,color:"#D97706",fontWeight:600}}>DOANH THU</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#D97706"}}>¥{fmt(totalRev)}</div>
+                </div>
+                <div style={{flex:1,background:dark?"#1C1917":"#EFF6FF",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:9,color:t.ac,fontWeight:600}}>KHÁCH</div>
+                  <div style={{fontSize:16,fontWeight:800,color:t.ac}}>{ranked.length}</div>
+                </div>
+                <div style={{flex:1,background:dark?"#1C1917":"#F0FDF4",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                  <div style={{fontSize:9,color:"#16A34A",fontWeight:600}}>ĐƠN</div>
+                  <div style={{fontSize:16,fontWeight:800,color:"#16A34A"}}>{mOrders.length}</div>
+                </div>
+              </div>
+              {ranked.length===0?<div style={{textAlign:"center",padding:20,color:t.dm}}>Chưa có đơn trong {monthNames[lbMonth]}</div>:
+              <div style={{maxHeight:400,overflowY:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead><tr style={{borderBottom:`2px solid ${t.bd}`,position:"sticky",top:0,background:t.sf}}>
+                    <th style={{padding:"6px 4px",textAlign:"center",color:t.dm,fontSize:10,width:30}}>#</th>
+                    <th style={{padding:"6px 4px",textAlign:"left",color:t.dm,fontSize:10}}>Khách</th>
+                    <th style={{padding:"6px 4px",textAlign:"right",color:t.dm,fontSize:10}}>Đơn</th>
+                    <th style={{padding:"6px 4px",textAlign:"right",color:t.dm,fontSize:10}}>SL</th>
+                    <th style={{padding:"6px 4px",textAlign:"right",color:t.dm,fontSize:10}}>Doanh thu</th>
+                  </tr></thead>
+                  <tbody>{ranked.map((c,i)=>{
+                    const pct=totalRev>0?Math.round(c.rev/totalRev*100):0;
+                    return <tr key={i} style={{borderBottom:`1px solid ${t.bd}`,background:i<3?(dark?"#292524":"#FFFBEB"):"transparent"}} onClick={()=>setMCust({name:c.name,fb:c.fb||""})}>
+                      <td style={{padding:"8px 4px",textAlign:"center",fontSize:i<3?16:12}}>{i<3?medals[i]:i+1}</td>
+                      <td style={{padding:"8px 4px",fontWeight:i<3?700:400,color:t.tx,cursor:"pointer"}}>
+                        <div>{c.name}</div>
+                        {pct>=5&&<div style={{marginTop:2,height:3,background:t.bd,borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:i===0?"#F59E0B":i===1?"#94A3B8":i===2?"#CD7F32":t.ac,borderRadius:2}}/></div>}
+                      </td>
+                      <td style={{padding:"8px 4px",textAlign:"right",color:t.dm}}>{c.items}</td>
+                      <td style={{padding:"8px 4px",textAlign:"right",color:t.dm}}>{c.qty}</td>
+                      <td style={{padding:"8px 4px",textAlign:"right",fontWeight:700,color:i===0?"#D97706":i<3?t.ac:t.tx}}>¥{fmt(c.rev)}</td>
+                    </tr>;})}</tbody>
+                </table>
+              </div>}
+            </div>;
+          })()}
         </div>}
 
         {/* ORDERS */}
@@ -1130,10 +1221,10 @@ function App(){
                     safePost({action:"updateStatus",rowIndex:o._rowIndex,newStatus:newSt,verify:{tenKhach:name,maSP:String(o["Mã SP"]||"")}},`→ ${newSt}`);
                     // ★ Auto copy tin nhắn theo trạng thái
                     const msgs={"Chờ hàng":`${name} ơi em xác nhận đơn nha!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\nGiá: ¥${fmt(o["Giá sp"])}\nHàng sẽ về trong 7-14 ngày. Về kho em báo ${name} CK nhé! 💜`,"Về kho":`${name} ơi hàng về rồi!\n${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}\n💰 ¥${fmt(o["Giá sp"])}\n\n${bank}\nCK xong báo t nhé.`};
-                    if(msgs[newSt]){navigator.clipboard?.writeText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
+                    if(msgs[newSt]){copyText(msgs[newSt]);msg(`📋 Đã copy tin nhắn → ${name}`);}
                   }} disabled={busy} style={{padding:"2px 3px",borderRadius:4,border:`1px solid ${SC[o["TRẠNG THÁI"]]||t.bd}30`,background:`${SC[o["TRẠNG THÁI"]]||"#999"}10`,color:SC[o["TRẠNG THÁI"]]||t.dm,fontSize:9,fontWeight:600,cursor:"pointer"}}>{ST.map(s=><option key={s}>{s}</option>)}</select></td>
                   <td style={{padding:"5px 2px",display:"flex",gap:2}}>
-                    <button onClick={()=>{navigator.clipboard?.writeText(`${o["Tên khách"]} | ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]} | ¥${fmt(o["Giá sp"])} | ${o["TRẠNG THÁI"]}`);msg("📋 Copied");}} title="Copy" style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>📋</button>
+                    <button onClick={()=>{copyText(`${o["Tên khách"]} | ${o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]} | ¥${fmt(o["Giá sp"])} | ${o["TRẠNG THÁI"]}`);msg("📋 Copied");}} title="Copy" style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>📋</button>
                     <button onClick={()=>setMEdit(o)} title="Sửa" style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>✏️</button>
                     <button onClick={()=>{if(!confirm("Xoá?"))return;safePost({action:"softDelete",rowIndex:o._rowIndex,verify:{tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}},"Đã xoá");}} disabled={busy} style={{border:"none",background:"none",cursor:"pointer",fontSize:9}}>🗑</button>
                   </td>
@@ -1217,6 +1308,7 @@ function App(){
               <span style={{fontSize:10,color:t.dm}}>Tổng: <b style={{color:"#D97706"}}>¥{fmt(bossDraft.reduce((s,o)=>s+(Number(o["Giá sp"]||0))*(Number(o["Số lượng"]||1)),0))}</b> · {[...new Set(bossDraft.map(o=>String(o["Tên khách"]||"").trim()))].length} khách</span>
             </div>
           </div>}
+          <input value={shipSearch} onChange={e=>setShipSearch(e.target.value)} placeholder="🔍 Tìm khách, mã SP..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.inp,color:t.tx,fontSize:12,marginBottom:8,outline:"none"}}/>
           <p style={{color:t.dm,fontSize:11,marginBottom:8}}>Đủ hàng lên trên · Tick chọn món → Gửi</p>
           {shipData.length>0&&<div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
             <div style={{background:t.sf,borderRadius:8,padding:"6px 10px",border:`1px solid ${t.bd}`,flex:1,fontSize:11}}>
@@ -1225,10 +1317,10 @@ function App(){
             <button onClick={()=>{const ns=new Set();shipData.filter(c=>!c.pending).forEach(c=>c.items.forEach(o=>ns.add(o._rowIndex)));setShipSel(ns);msg(`✅ Chọn ${ns.size} món đủ hàng`);}} style={{padding:"6px 10px",borderRadius:8,border:"none",background:"#D1FAE5",color:"#065F46",fontSize:10,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>☑ Đủ hàng</button>
             <button onClick={()=>setShipSel(new Set())} style={{padding:"6px 10px",borderRadius:8,border:"none",background:t.sf,color:t.dm,fontSize:10,cursor:"pointer",border:`1px solid ${t.bd}`}}>✕ Bỏ chọn</button>
           </div>}
-          {!shipData.length?<div style={{background:t.sf,borderRadius:12,padding:30,textAlign:"center",border:`1px solid ${t.bd}`}}><div style={{fontSize:32,marginBottom:8}}>📭</div><p style={{color:t.tx,fontWeight:600}}>Không có hàng "Về kho"</p></div>:<>
-          {shipData.filter(c=>!c.pending).length>0&&<h3 style={{fontSize:13,fontWeight:700,color:"#0D9488",marginBottom:8}}>✅ Đủ hàng — gửi ngay ({shipData.filter(c=>!c.pending).length})</h3>}
-          {shipData.map((cust,ci)=><ShipCard key={ci} cust={cust} ci={ci} shipData={shipData} shipSel={shipSel} setShipSel={setShipSel} copyNotify={copyNotify} doShip={doShip} cancelOrder={cancelOrder} setMCust={setMCust} busy={busy} t={t} addToBossDraft={addToBossDraft} addrs={addrs} bossDraft={bossDraft} msg={msg}/>)}
-          </>}
+          {(()=>{const _q=shipSearch.trim().toLowerCase();const _sd=_q?shipData.filter(c=>c.name.toLowerCase().includes(_q)||c.items.some(o=>String(o["Mã SP"]||"").toLowerCase().includes(_q)||String(o["Tên Sp"]||"").toLowerCase().includes(_q))):shipData;return !_sd.length?<div style={{background:t.sf,borderRadius:12,padding:30,textAlign:"center",border:`1px solid ${t.bd}`}}><div style={{fontSize:32,marginBottom:8}}>📭</div><p style={{color:t.tx,fontWeight:600}}>{_q?"Không tìm thấy":"Không có hàng \"Về kho\""}</p></div>:(<>
+          {_sd.filter(c=>!c.pending).length>0&&<h3 style={{fontSize:13,fontWeight:700,color:"#0D9488",marginBottom:8}}>✅ Đủ hàng — gửi ngay ({_sd.filter(c=>!c.pending).length})</h3>}
+          {_sd.map((cust,ci)=><ShipCard key={ci} cust={cust} ci={ci} shipData={shipData} shipSel={shipSel} setShipSel={setShipSel} copyNotify={copyNotify} doShip={doShip} cancelOrder={cancelOrder} setMCust={setMCust} busy={busy} t={t} addToBossDraft={addToBossDraft} addrs={addrs} bossDraft={bossDraft} msg={msg}/>)}
+          </>)})()}
         </div>}
 
         {/* ★ KHO — Smart nhập kho + auto chuyển Về kho */}
@@ -1244,8 +1336,8 @@ function App(){
       </div>
     </div>
 
-    {mob&&<div style={{position:"fixed",bottom:0,left:0,right:0,display:"flex",background:t.sf,borderTop:`1px solid ${t.bd}`,padding:"2px 0 6px",zIndex:50}}>
-      {NAV.map(n=><button key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"3px 0",border:"none",background:"transparent",color:tab===n.id?t.ac:t.dm,fontSize:8,fontWeight:600,cursor:"pointer"}}><span style={{fontSize:14}}>{n.icon}</span>{n.l}</button>)}
+    {mob&&<div style={{position:"fixed",bottom:0,left:0,right:0,display:"flex",background:t.sf,borderTop:`1px solid ${t.bd}`,padding:"3px 0 max(8px, env(safe-area-inset-bottom))",zIndex:50,boxShadow:"0 -2px 12px rgba(0,0,0,.06)"}}>
+      {NAV.map(n=><button key={n.id} onClick={()=>{setTab(n.id);setSearch("");setFilt("Tất cả");setSel(new Set());setShipSel(new Set());setShipSearch("");}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"5px 0 3px",border:"none",background:"transparent",color:tab===n.id?t.ac:t.dm,fontSize:10,fontWeight:tab===n.id?700:600,cursor:"pointer"}}><span style={{fontSize:18,lineHeight:1}}>{n.icon}</span>{n.l}</button>)}
     </div>}
     {!mob&&<button onClick={()=>setMAdd(true)} style={{position:"fixed",bottom:18,right:18,width:46,height:46,borderRadius:14,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:20,cursor:"pointer",boxShadow:"0 4px 20px rgba(124,58,237,.3)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>}
     <button onClick={()=>window.scrollTo({top:0,behavior:"smooth"})} style={{position:"fixed",bottom:mob?62:18,right:mob?8:70,width:32,height:32,borderRadius:8,border:"none",background:t.sf,color:t.dm,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,.1)",zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",border:`1px solid ${t.bd}`}}>↑</button>
@@ -1254,12 +1346,15 @@ function App(){
 
 // ═══ CK TAB (extracted component) ═══
 function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,setMCust}){
+  const [ckSearch,setCkSearch]=useState("");
   const allSent=orders.filter(o=>o["TRẠNG THÁI"]==="Đã gửi");
   const chuaCK=allSent.filter(o=>!(o._note||"").includes("💰CK"));
   const daCK=allSent.filter(o=>(o._note||"").includes("💰CK"));
   const groupBy=(list)=>{const m={};list.forEach(o=>{const n=String(o["Tên khách"]||"").trim();const fb=String(o["Link fb"]||"").trim();const key=n+"|"+normalizeFB(fb||"");if(!m[key])m[key]={items:[],rev:0,fb:fb,name:n};m[key].items.push(o);m[key].rev+=(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0);});return Object.entries(m).sort((a,b)=>b[1].rev-a[1].rev);};
-  const chuaCKgrp=groupBy(chuaCK);
-  const daCKgrp=groupBy(daCK);
+  const _ckQ=ckSearch.trim().toLowerCase();
+  const _ckFilter=(grp)=>_ckQ?grp.filter(([name,c])=>c.name.toLowerCase().includes(_ckQ)||c.items.some(o=>String(o["Mã SP"]||"").toLowerCase().includes(_ckQ)||String(o["Tên Sp"]||"").toLowerCase().includes(_ckQ))):grp;
+  const chuaCKgrp=_ckFilter(groupBy(chuaCK));
+  const daCKgrp=_ckFilter(groupBy(daCK));
   const totalChuaCK=chuaCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
   const totalDaCK=daCK.reduce((s,o)=>s+(Number(o["Giá sp"])||0)*Number(o["Số lượng"]||0),0);
 
@@ -1267,6 +1362,7 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
       <h2 style={{fontSize:18,fontWeight:800,color:t.tx}}>💳 Chuyển khoản</h2>
     </div>
+    <input value={ckSearch} onChange={e=>setCkSearch(e.target.value)} placeholder="🔍 Tìm khách, mã SP..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.inp,color:t.tx,fontSize:12,marginBottom:10,outline:"none"}}/>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
       <div onClick={()=>setCkView("chua")} style={{background:ckView==="chua"?"#FEF2F2":"transparent",borderRadius:10,padding:12,border:ckView==="chua"?"2px solid #DC2626":`1px solid ${t.bd}`,cursor:"pointer",textAlign:"center"}}>
         <div style={{fontSize:9,color:"#DC2626",fontWeight:700}}>🔴 CHƯA CK</div>
@@ -1307,8 +1403,8 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
           {c.items.map((o,j)=><div key={j} style={{padding:"2px 0"}}>{o["Mã SP"]} {o["SIZE"]} {o["COLOR"]} x{o["Số lượng"]} · ¥{fmt(o["Giá sp"])}</div>)}
         </div>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>doCK(c.items,c.name,c.rev)} disabled={busy} style={{flex:1,padding:8,borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💰 Đã CK</button>
-          <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;navigator.clipboard?.writeText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:8,borderRadius:8,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
+          <button onClick={()=>doCK(c.items,c.name,c.rev)} disabled={busy} style={{flex:1,padding:"11px 8px",borderRadius:9,border:"none",background:"#16A34A",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 1px 4px rgba(22,163,74,.3)"}}>💰 Đã CK</button>
+          <button onClick={()=>{const txt=`Chào ${c.name}! 🌸\nHàng đã gửi rồi ạ!\n\n${c.items.map(o=>`${o["Tên Sp"]||o["Mã SP"]} ${o["SIZE"]} ${o["COLOR"]} x${o["Số lượng"]}`).join("\n")}\n\n💰 Tổng: ¥${fmt(c.rev)}\n\n${bank}\n\nCK xong báo em nhé! 📦`;copyText(txt);msg("📋 Đã copy → mở Messenger");if(c.fb&&!isPhone)setTimeout(()=>window.open(c.fb.includes("facebook.com")?c.fb.replace("www.facebook.com","m.facebook.com")+"/messages":c.fb,"_blank"),500);}} style={{flex:1,padding:"11px 8px",borderRadius:9,border:`1px solid #DC2626`,background:"#FEF2F2",color:"#DC2626",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Nhắc → 💬</button>
           <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.items.length} món của ${c.name} → Về kho?`))return;await doUnship(c.items);}} disabled={busy} style={{padding:8,borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:11,fontWeight:600,cursor:"pointer",opacity:busy?.5:1}} title="Hoàn tác → Về kho">↩</button>
         </div>
       </div>;})}
@@ -1328,8 +1424,8 @@ function CKTab({orders,ckView,setCkView,doCK,doUnCK,doUnship,busy,t,bank,msg,set
           {c.items.map((o,j)=><div key={j}>{o["Mã SP"]} {o["SIZE"]} {o["COLOR"]} x{o["Số lượng"]}</div>)}
         </div>
         <div style={{display:"flex",gap:4,paddingLeft:32}}>
-          <button onClick={()=>{if(!confirm(`Bỏ CK của ${c.name}? → Quay lại Chưa CK`))return;doUnCK(c.items,c.name);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid #F59E0B`,background:"#FEF3C7",color:"#92400E",fontSize:10,cursor:"pointer"}}>↩ Bỏ CK</button>
-          <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.name}: bỏ CK + quay về Về kho?`))return;await doUnCK(c.items,c.name);await doUnship(c.items);}} disabled={busy} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:10,cursor:"pointer"}}>↩ Về kho</button>
+          <button onClick={()=>{if(!confirm(`Bỏ CK của ${c.name}? → Quay lại Chưa CK`))return;doUnCK(c.items,c.name);}} disabled={busy} style={{padding:"7px 12px",borderRadius:7,border:`1px solid #F59E0B`,background:"#FEF3C7",color:"#92400E",fontSize:11,fontWeight:600,cursor:"pointer"}}>↩ Bỏ CK</button>
+          <button onClick={async()=>{if(!confirm(`↩ Hoàn tác ${c.name}: bỏ CK + quay về Về kho?`))return;await doUnCK(c.items,c.name);await doUnship(c.items);}} disabled={busy} style={{padding:"7px 12px",borderRadius:7,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:11,fontWeight:600,cursor:"pointer"}}>↩ Về kho</button>
         </div>
       </div>)}
     </>}
@@ -1517,7 +1613,7 @@ function ToolsTab({catalog,active,orders,stock,shipped,stats,bank,t,msg,safePost
       {templates.map((tpl,i)=><div key={i} style={{background:t.bg,borderRadius:8,padding:10,marginBottom:8,border:`1px solid ${t.bd}`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
           <span style={{fontSize:12,fontWeight:600,color:t.tx}}>{tpl.name}</span>
-          <button onClick={()=>{navigator.clipboard?.writeText(tpl.text);msg(`📋 Đã copy: ${tpl.name}`);}} style={{padding:"3px 8px",borderRadius:4,border:"none",background:t.ac,color:"#fff",fontSize:10,cursor:"pointer"}}>📋 Copy</button>
+          <button onClick={()=>{copyText(tpl.text);msg(`📋 Đã copy: ${tpl.name}`);}} style={{padding:"3px 8px",borderRadius:4,border:"none",background:t.ac,color:"#fff",fontSize:10,cursor:"pointer"}}>📋 Copy</button>
         </div>
         <pre style={{fontSize:10,color:t.dm,whiteSpace:"pre-wrap",margin:0,lineHeight:1.4}}>{tpl.text}</pre>
       </div>)}
@@ -1582,7 +1678,7 @@ function ToolsTab({catalog,active,orders,stock,shipped,stats,bank,t,msg,safePost
           {stats.overdue>0&&<div style={{fontSize:11,color:"#DC2626",marginTop:6,fontWeight:600}}>⚠️ {stats.overdue} đơn quá 21 ngày!</div>}
         </div>
 
-        <button onClick={()=>{navigator.clipboard?.writeText(reportText);msg("📋 Đã copy báo cáo!");}} style={{width:"100%",padding:12,borderRadius:8,border:"none",background:t.ac,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Copy báo cáo</button>
+        <button onClick={()=>{copyText(reportText);msg("📋 Đã copy báo cáo!");}} style={{width:"100%",padding:12,borderRadius:8,border:"none",background:t.ac,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>📋 Copy báo cáo</button>
       </div>;
     })()}
   </div>;
@@ -1646,9 +1742,9 @@ function ShipCard({cust,ci,shipData,shipSel,setShipSel,copyNotify,doShip,cancelO
         </div>
       </div>}
       <div style={{display:"flex",gap:6,marginTop:8}}>
-        <button onClick={addCustToDraft} disabled={inDraft} style={{padding:"8px 10px",borderRadius:8,border:"none",background:inDraft?"#D1FAE5":"#EA580C",color:inDraft?"#065F46":"#fff",fontSize:11,fontWeight:600,cursor:inDraft?"default":"pointer"}}>{inDraft?"✅ Đã draft":"📋 +Draft"}</button>
-        <button onClick={()=>copyNotify(cust,selItems.length>0?selItems:null,Number(shipFee)||0,tracking)} style={{flex:1,padding:8,borderRadius:8,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>📋 Copy {selItems.length>0?`(${selItems.length})`:""}</button>
-        <button onClick={()=>{const items=selItems.length>0?selItems:cust.items;if(!confirm(`Gửi ${items.length} món cho ${cust.name}?`))return;doShip(items,tracking);}} disabled={busy} style={{padding:"8px 14px",borderRadius:8,border:"none",background:"#16A34A",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer",opacity:busy?.5:1}}>📦 Gửi {selItems.length>0?`(${selItems.length})`:""}</button>
+        <button onClick={addCustToDraft} disabled={inDraft} style={{padding:"10px 12px",borderRadius:9,border:"none",background:inDraft?"#D1FAE5":"#EA580C",color:inDraft?"#065F46":"#fff",fontSize:12,fontWeight:600,cursor:inDraft?"default":"pointer"}}>{inDraft?"✅ Đã draft":"📋 +Draft"}</button>
+        <button onClick={()=>copyNotify(cust,selItems.length>0?selItems:null,Number(shipFee)||0,tracking)} style={{flex:1,padding:"10px 8px",borderRadius:9,border:"none",background:"linear-gradient(135deg,#7C3AED,#E8567F)",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>📋 Copy {selItems.length>0?`(${selItems.length})`:""}</button>
+        <button onClick={()=>{const items=selItems.length>0?selItems:cust.items;if(!confirm(`Gửi ${items.length} món cho ${cust.name}?`))return;doShip(items,tracking);}} disabled={busy} style={{padding:"10px 16px",borderRadius:9,border:"none",background:"#16A34A",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",opacity:busy?.5:1,boxShadow:"0 1px 4px rgba(22,163,74,.3)"}}>📦 Gửi {selItems.length>0?`(${selItems.length})`:""}</button>
       </div>
     </div>
   </>;
@@ -1680,7 +1776,8 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
         setResult(r);
         msg(`📦 Nhập ${qt} → ${r.matched||0} đơn auto Về kho!`);
         setMa("");setCl("");setQt("1");
-        onReload();
+        setLoading(false);
+        onReload();return;
       }else{msg("❌ "+(r.error||""));}
     }catch(e){msg("❌ "+e.message);}
     setLoading(false);
@@ -1722,13 +1819,14 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
       <h3 style={{fontSize:14,fontWeight:700,color:"#16A34A",marginTop:16,marginBottom:8}}>📦 Hàng dư ({surplusData.reduce((s,x)=>s+x.sl,0)} SP)</h3>
       <div style={{background:t.sf,borderRadius:10,border:"1px solid #D1FAE5",overflow:"hidden",marginBottom:12}}>
         <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-          <thead><tr style={{borderBottom:"2px solid #D1FAE5",background:"#F0FDF4"}}>{["Mã","Size","Màu","SL dư","TT"].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left",color:"#065F46",fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
+          <thead><tr style={{borderBottom:"2px solid #D1FAE5",background:"#F0FDF4"}}>{["Mã","Size","Màu","SL dư","TT",""].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left",color:"#065F46",fontWeight:600,fontSize:9}}>{h}</th>)}</tr></thead>
           <tbody>{surplusData.map((s,i)=>{const saveSurplus=(field,val)=>{const data={id:s.id};data[field]=field==="sl"?Number(val)||0:val;safePost({action:"editSurplus",...data},"✅ Đã sửa");};return <tr key={i} style={{borderBottom:"1px solid #D1FAE5"}}>
             <InlineCell value={s.ma} field="ma" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px",fontWeight:600,color:t.ac}}/>
             <InlineCell value={s.sz} field="sz" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px"}}/>
             <InlineCell value={s.cl} field="cl" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px"}}/>
             <InlineCell value={s.sl} field="sl" type="number" t={t} busy={busy} safePost={safePost} onSave={saveSurplus} style={{padding:"7px 8px",fontWeight:700,color:"#16A34A"}}/>
-            <td style={{padding:"7px 8px"}}><span style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:s.tt==="Về kho"?"#D1FAE5":"#FEF3C7",color:s.tt==="Về kho"?"#065F46":"#92400E",fontWeight:600}}>{s.tt}</span></td>
+            <td style={{padding:"7px 8px"}}><select disabled={busy} value={s.tt} onChange={e=>saveSurplus("trangThai",e.target.value)} style={{fontSize:10,padding:"2px 4px",borderRadius:4,border:"1px solid #D1FAE5",background:s.tt==="Về kho"?"#D1FAE5":"#FEF3C7",color:s.tt==="Về kho"?"#065F46":"#92400E",fontWeight:600,cursor:"pointer"}}>{["Về kho","Chờ hàng","Đang ship"].map(o=><option key={o} value={o}>{o}</option>)}</select></td>
+            <td style={{padding:"7px 4px",textAlign:"center"}}><button disabled={busy} onClick={()=>{if(confirm(`Xóa hàng dư ${s.ma} ${s.sz} ${s.cl} x${s.sl}?`))safePost({action:"deleteSurplus",id:s.id},"🗑️ Đã xóa hàng dư");}} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:"#EF4444",opacity:busy?0.4:0.7,padding:2}}>🗑️</button></td>
           </tr>;})}</tbody>
         </table>
       </div>
@@ -1752,6 +1850,7 @@ function StockTab({stock,active,surplus,surplusData,safePost,busy:parentBusy,msg
 
 function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
   const [sel,setSel]=useState({stage:"",keys:new Set()});
+  const [gzSearch,setGzSearch]=useState("");
   const stats=gzCounts||{cd:0,ch:0,ds:0};
 
   const bulkUpdate=async(stage,newStatus,label)=>{
@@ -1794,12 +1893,14 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
       return g.ma+" | "+g.size+" | "+g.color+" | SL: "+qty;
     }).join("\n");
     const total=list.reduce((s,g)=>{const ri=gzData.indexOf(g);return s+(customQty[ri]!==undefined?Number(customQty[ri]):g[qtyKey]);},0);
-    navigator.clipboard?.writeText("ĐẶT GZ:\n\n"+text+"\n\nTổng: "+total+" SP");
+    copyText("ĐẶT GZ:\n\n"+text+"\n\nTổng: "+total+" SP");
   };
 
-  const itemsCD=gzData.filter(g=>g.chuaDat>0);
-  const itemsCH=gzData.filter(g=>g.choHang>0);
-  const itemsDS=gzData.filter(g=>g.dangShip>0);
+  const _gzQ=gzSearch.trim().toLowerCase();
+  const _gzF=g=>!_gzQ||g.ma.toLowerCase().includes(_gzQ)||String(g.ten||"").toLowerCase().includes(_gzQ)||String(g.size||"").toLowerCase().includes(_gzQ)||String(g.color||"").toLowerCase().includes(_gzQ);
+  const itemsCD=gzData.filter(g=>g.chuaDat>0&&_gzF(g));
+  const itemsCH=gzData.filter(g=>g.choHang>0&&_gzF(g));
+  const itemsDS=gzData.filter(g=>g.dangShip>0&&_gzF(g));
 
   const Section=({title,icon,color,items,stage,qtyKey,nextStatus,nextLabel,nextIcon})=>{
     if(!items.length)return null;
@@ -1839,7 +1940,8 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
 
   return <div>
     <h2 style={{fontSize:18,fontWeight:800,color:t.tx,marginBottom:4}}>🏭 Pipeline đặt hàng</h2>
-    <p style={{color:t.dm,fontSize:11,marginBottom:12}}>CHƯA ĐẶT → Chờ hàng → Đang ship → Về kho (auto khi nhập kho)</p>
+    <p style={{color:t.dm,fontSize:11,marginBottom:8}}>CHƯA ĐẶT → Chờ hàng → Đang ship → Về kho (auto khi nhập kho)</p>
+    <input value={gzSearch} onChange={e=>setGzSearch(e.target.value)} placeholder="🔍 Tìm mã SP, tên SP..." style={{width:"100%",padding:"8px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.inp,color:t.tx,fontSize:12,marginBottom:10,outline:"none"}}/>
     <div style={{display:"flex",gap:4,marginBottom:14,overflowX:"auto"}}>
       {[{l:"Chưa đặt",v:stats.cd,c:"#94A3B8",i:"⚪"},{l:"Chờ hàng",v:stats.ch,c:"#D97706",i:"🟡"},{l:"Đang ship",v:stats.ds,c:"#7C3AED",i:"🟣"},{l:"Hàng dư",v:surplusTotal,c:"#16A34A",i:"📦"}].map((s,idx)=>
         <div key={idx} style={{background:t.sf,borderRadius:10,padding:"8px 12px",border:"1px solid "+t.bd,flex:1,textAlign:"center"}}>
@@ -1947,7 +2049,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   const copyPacking=()=>{
     const lines=allLines.map(l=>`${l.ma} | ${l.size} | ${l.color} | x${l.qty}`);
     const txt=`📦 KIỆN EMS: ${emsCode||"_______________"}\n${"━".repeat(35)}\n\n${"STT".padEnd(4)}${"Mã SP".padEnd(10)}${"Size".padEnd(6)}${"Màu".padEnd(12)}${"SL"}\n${"─".repeat(35)}\n${allLines.map((l,i)=>`${String(i+1).padEnd(4)}${String(l.ma).padEnd(10)}${String(l.size).padEnd(6)}${String(l.color).padEnd(12)}${l.qty}`).join("\n")}\n${"─".repeat(35)}\nTổng: ${totalQty} SP · ${allLines.length} SKU\n${"━".repeat(35)}\n\n📅 ${new Date().toLocaleDateString("vi-VN")}\n🌸 Shop MAM`;
-    navigator.clipboard?.writeText(txt);
+    copyText(txt);
     msg("📋 Đã copy packing list");
   };
 
@@ -2021,7 +2123,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
       if(String(g.emsCode||"").toLowerCase().includes(q))return true;
       // Match mã SP / size / color trong bất kỳ đợt nào
       return g.batches.some(b=>b.items.some(it=>
-        String(it.sku||"").toLowerCase().includes(q)
+        String(it.ma||it.sku||"").toLowerCase().includes(q)
         ||String(it.size||"").toLowerCase().includes(q)
         ||String(it.color||"").toLowerCase().includes(q)
       ));
@@ -2032,7 +2134,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   const itemMatches=(it)=>{
     const q=searchHist.trim().toLowerCase();
     if(!q)return false;
-    return String(it.sku||"").toLowerCase().includes(q)
+    return String(it.ma||it.sku||"").toLowerCase().includes(q)
       ||String(it.size||"").toLowerCase().includes(q)
       ||String(it.color||"").toLowerCase().includes(q);
   };
@@ -2182,7 +2284,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                     const hit=itemMatches(it); // ★ v3.2: highlight nếu match search
                     return <tr key={j} style={{borderBottom:`1px solid ${t.bd}22`,background:hit?"#FEF9C3":"transparent"}}>
                       <td style={{padding:"2px 4px"}}>{img?<img src={img} style={{width:28,height:28,objectFit:"cover",borderRadius:3}} onError={e=>e.target.style.display="none"}/>:<span style={{fontSize:8,color:t.dm}}>📷</span>}</td>
-                      <td style={{padding:"2px 4px",fontWeight:hit?800:600,color:hit?"#854D0E":t.ac}}>{it.sku}</td>
+                      <td style={{padding:"2px 4px",fontWeight:hit?800:600,color:hit?"#854D0E":t.ac}}>{it.ma||it.sku||""}</td>
                       <td style={{padding:"2px 4px",color:t.tx}}>{it.size}</td>
                       <td style={{padding:"2px 4px",color:t.tx}}>{it.color}</td>
                       <td style={{padding:"2px 4px",textAlign:"right",fontWeight:600}}>{it.qty}</td>
@@ -2207,7 +2309,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                     const w=window.open("","_blank","width=700,height=900");
                     if(w){w.document.write(pdfHtml);w.document.close();setTimeout(()=>w.print(),1000);}
                   }} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#DC2626",color:"#fff",fontSize:10,cursor:"pointer"}}>📄 In PDF</button>
-                  <button onClick={()=>{const txt=b.items.map(l=>`${l.sku} ${l.size||""} ${l.color||""} x${l.qty}`).join("\n");navigator.clipboard?.writeText(`📦 EMS: ${g.emsCode}\n${txt}\nTổng: ${b.totalQty} SP`);msg("📋 Copied");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:10,cursor:"pointer"}}>📋 Copy</button>
+                  <button onClick={()=>{const txt=b.items.map(l=>`${l.sku} ${l.size||""} ${l.color||""} x${l.qty}`).join("\n");copyText(`📦 EMS: ${g.emsCode}\n${txt}\nTổng: ${b.totalQty} SP`);msg("📋 Copied");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:10,cursor:"pointer"}}>📋 Copy</button>
                 </div>}
               </div>;
             })}
@@ -2902,8 +3004,17 @@ function AITab({t,msg,catalog,onDone}){
 }
 
 function LoginScreen({onLogin,t}){
-  const [pw,setPw]=useState("");const [err,setErr]=useState(false);
-  const go=()=>{if(pw===PW)onLogin();else{setErr(true);setTimeout(()=>setErr(false),2000);}};
+  const [pw,setPw]=useState("");const [err,setErr]=useState(false);const [checking,setChecking]=useState(false);
+  const go=async()=>{
+    if(!pw||checking)return;setChecking(true);
+    try{
+      const r=await fetch(API,{headers:{"x-api-key":pw}});
+      const j=await r.json();
+      if(r.status===401||j.error==="Unauthorized"){setErr(true);setTimeout(()=>setErr(false),2000);setChecking(false);return;}
+      API_KEY=pw;localStorage.setItem("dt_api_key",pw);onLogin();
+    }catch(e){setErr(true);setTimeout(()=>setErr(false),2000);}
+    setChecking(false);
+  };
   return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:t.bg}}>
     <div style={{background:t.sf,borderRadius:24,padding:"48px 40px",width:380,maxWidth:"90vw",boxShadow:"0 20px 60px rgba(0,0,0,.08)",textAlign:"center",border:`1px solid ${t.bd}`}}>
       <div style={{fontSize:48,marginBottom:8}}>🌸</div><h1 style={{fontSize:24,fontWeight:800,color:t.tx,marginBottom:4}}>Dream Team</h1>

@@ -48,6 +48,9 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 
-# data exports
+# data files
+*.xlsx
 dreamteam-backup.json
