@@ -391,7 +391,7 @@ function AddForm({orders,catalog,addrs,surplusData,safePost,onAdd,t}){
     </div>
 
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:4}}>
-      <div><label style={{fontSize:11,color:t.dm,fontWeight:600,marginBottom:4,display:"block"}}>Mã SP *</label><input value={d.ma} onChange={onMaChange} style={inp}/></div>
+      <div><label style={{fontSize:11,color:t.dm,fontWeight:600,marginBottom:4,display:"block"}}>Mã SP *</label><input value={d.ma} onChange={onMaChange} list="maList" style={inp}/><datalist id="maList">{[...new Set(catalog.map(c=>norm(c["Mã SP"])).filter(Boolean))].map(m=>{const c=catalog.find(x=>norm(x["Mã SP"])===m);return <option key={m} value={m}>{c&&c["Tên SP"]?c["Tên SP"]:""}</option>;})}</datalist></div>
       <div><label style={{fontSize:11,color:t.dm,fontWeight:600,marginBottom:4,display:"block"}}>Tên SP {catMatch&&<span style={{color:"#0D9488"}}>✓</span>}</label><input value={d.sp} onChange={e=>setD({...d,sp:e.target.value})} style={inp}/></div>
     </div>
     {d.ma&&!catMatch&&<div style={{background:"#FEF3C7",borderRadius:8,padding:"6px 10px",marginBottom:8,fontSize:11,color:"#92400E"}}>⚠️ Mã "{d.ma}" chưa có CATALOG</div>}
