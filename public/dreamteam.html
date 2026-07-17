@@ -1073,6 +1073,49 @@ function App(){
               </div>;})}
             </div>
           </div>
+          {(()=>{
+            const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
+            const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá"&&x["TRẠNG THÁI"]!=="Lưu trữ");
+            // Doanh thu theo tháng đặt
+            const revM={};
+            allValid.forEach(x=>{const m=String(x["NGÀY OD"]||"").slice(0,7);if(!m)return;revM[m]=(revM[m]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
+            // Lãi theo tháng CK
+            const ckDate=x=>{const mt=(x._note||"").match(/💰CK\s*(\d{4}-\d{2}-\d{2})/);return mt?mt[1]:"";};
+            const profM={};const bossM={};
+            allValid.forEach(x=>{
+              const d=ckDate(x);if(!d)return;const m=d.slice(0,7);
+              const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
+              const nhap=cat?Number(cat["Giá nhập"]||0):0;
+              const qty=Number(x["Số lượng"]||0);
+              profM[m]=(profM[m]||0)+(Number(x["Giá sp"])||0)*qty-(nhap+SHIP_GZ)*qty;
+              const ck=String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim();
+              if(ck!=="|"){if(!bossM[m])bossM[m]=new Set();bossM[m].add(ck);}
+            });
+            Object.keys(profM).forEach(m=>{profM[m]-=BOSS_PER_ORDER*(bossM[m]?bossM[m].size:0);});
+            const months=[...new Set([...Object.keys(revM),...Object.keys(profM)])].sort().slice(-12);
+            if(!months.length)return null;
+            const maxV=Math.max(...months.map(m=>Math.max(revM[m]||0,profM[m]||0)),1);
+            return <div style={{background:t.sf,borderRadius:12,border:`1px solid ${t.bd}`,padding:14,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,color:t.tx}}>📊 Doanh thu & Lãi theo tháng</div>
+                <div style={{display:"flex",gap:10,fontSize:9,color:t.dm}}>
+                  <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#D97706",marginRight:3}}/>DT (theo tháng đặt)</span>
+                  <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#16A34A",marginRight:3}}/>Lãi (theo tháng CK)</span>
+                </div>
+              </div>
+              <div style={{display:"flex",alignItems:"flex-end",gap:mob?4:8,height:110,overflowX:"auto"}}>
+                {months.map(m=>{const rv=revM[m]||0;const pf=profM[m]||0;return <div key={m} style={{flex:1,minWidth:mob?34:44,textAlign:"center"}}>
+                  <div style={{fontSize:7,color:"#D97706",fontWeight:700}}>{rv>0?"¥"+fmt(rv):""}</div>
+                  <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:2,height:70}}>
+                    <div title={"DT "+m+": ¥"+fmt(rv)} style={{width:"42%",height:Math.max(3,rv/maxV*68),background:"linear-gradient(180deg,#F59E0B,#D97706)",borderRadius:"3px 3px 0 0"}}/>
+                    <div title={"Lãi "+m+": ¥"+fmt(pf)} style={{width:"42%",height:Math.max(3,Math.max(pf,0)/maxV*68),background:pf>=0?"linear-gradient(180deg,#34D399,#16A34A)":"#DC2626",borderRadius:"3px 3px 0 0"}}/>
+                  </div>
+                  <div style={{fontSize:7,color:"#16A34A",fontWeight:700}}>{pf!==0?"¥"+fmt(pf):""}</div>
+                  <div style={{fontSize:8,color:t.dm,marginTop:2,fontWeight:600}}>{m.slice(5)}/{m.slice(2,4)}</div>
+                </div>;})}
+              </div>
+            </div>;
+          })()}
           <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:10,marginBottom:10}}>
             <div style={{background:t.sf,borderRadius:12,border:`1px solid ${t.bd}`,padding:14}}>
               <div style={{fontSize:12,fontWeight:700,color:t.tx,marginBottom:8}}>🏆 Top SP</div>
