@@ -1006,8 +1006,8 @@ function App(){
           {(()=>{
             const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
             const now=new Date();const todayStr=now.toISOString().slice(0,10);
-            const weekAgo=new Date(now-7*86400000).toISOString().slice(0,10);
-            const monthAgo=new Date(now-30*86400000).toISOString().slice(0,10);
+            const weekAgo=new Date(now-((now.getDay()+6)%7)*86400000).toISOString().slice(0,10);// từ thứ 2 tuần này
+            const monthAgo=todayStr.slice(0,8)+"01";// từ mùng 1 tháng này
             const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá"&&x["TRẠNG THÁI"]!=="Lưu trữ");
             const periodOrders=dashPeriod==="all"?allValid:allValid.filter(o=>{
               const d=String(o["NGÀY OD"]||"").slice(0,10);if(!d)return false;
