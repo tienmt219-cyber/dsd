@@ -41,7 +41,7 @@ const ST = ["CHƯA ĐẶT","Chờ hàng","Đang ship","Về kho","Đã gửi"];
 const SC = {"CHƯA ĐẶT":"#94A3B8","Chờ hàng":"#D97706","Đang ship":"#7C3AED","Về kho":"#0D9488","Đã gửi":"#16A34A","Đã xoá":"#DC2626"};
 // ★ Chi phí cố định/SP (JPY) — sửa ở đây khi thay đổi
 const SHIP_GZ = 100;  // Ship GZ→JP per item
-const BOSS_PER_ITEM = 80;  // ¥200/đơn ÷ ~2.5 món = ¥80/món
+const BOSS_PER_ORDER = 200;  // ¥200/khách (mỗi khách = 1 đơn BOSS)
 const SIZES = ["S","M","L","XL","2XL","3XL","FZ","35","36","37","38","39","40"];
 const COLORS = ["ĐEN","TRẮNG","NÂU","HỒNG","XÁM","XANH THAN","XANH NHẠT","BE","ĐỎ","TÍM","VÀNG"];
 const fmt = n => Number(n||0).toLocaleString("vi-VN");
@@ -745,14 +745,15 @@ function App(){
     allValid.forEach(x=>byS[x["TRẠNG THÁI"]]=(byS[x["TRẠNG THÁI"]]||0)+1);
     // Doanh thu từ tất cả
     const rev=allValid.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
-    // ★ Lợi nhuận THỰC: trừ giá nhập + ship GZ + BOSS
+    // ★ Lợi nhuận THỰC: trừ giá nhập + ship GZ per món, BOSS ¥200 per khách (name+fb)
+    const bossCust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
     const profit=allValid.reduce((s,x)=>{
       const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
       const nhap=cat?Number(cat["Giá nhập"]||0):0;
       const qty=Number(x["Số lượng"]||0);
-      const cost=(nhap+SHIP_GZ+BOSS_PER_ITEM)*qty;
+      const cost=(nhap+SHIP_GZ)*qty;
       return s+(Number(x["Giá sp"])||0)*qty-cost;
-    },0);
+    },0)-BOSS_PER_ORDER*bossCust;
     const cust=[...new Set(allValid.map(x=>x["Tên khách"]))].length;
     const overdue=allValid.filter(x=>{if(["Đã gửi","Về kho"].includes(x["TRẠNG THÁI"]))return false;const d=String(x["NGÀY OD"]||"").slice(0,10);return d&&daysAgo(d)>21;}).length;
     const byDate={};allValid.forEach(x=>{const d=String(x["NGÀY OD"]||"").slice(0,10);if(d)byDate[d]=(byDate[d]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
@@ -1017,12 +1018,13 @@ function App(){
               return true;
             });
             const pRev=periodOrders.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
+            const pBossCust=[...new Set(periodOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
             const pProfit=periodOrders.reduce((s,x)=>{
               const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
               const nhap=cat?Number(cat["Giá nhập"]||0):0;
               const qty=Number(x["Số lượng"]||0);
-              return s+(Number(x["Giá sp"])||0)*qty-(nhap+SHIP_GZ+BOSS_PER_ITEM)*qty;
-            },0);
+              return s+(Number(x["Giá sp"])||0)*qty-(nhap+SHIP_GZ)*qty;
+            },0)-BOSS_PER_ORDER*pBossCust;
             const pCust=[...new Set(periodOrders.map(x=>x["Tên khách"]))].length;
             const pSent=periodOrders.filter(x=>x["TRẠNG THÁI"]==="Đã gửi").length;
             const pDebt=periodOrders.filter(x=>x["TRẠNG THÁI"]==="Đã gửi"&&!(x._note||"").includes("💰CK")).reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
