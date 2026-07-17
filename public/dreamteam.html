@@ -745,9 +745,10 @@ function App(){
     allValid.forEach(x=>byS[x["TRẠNG THÁI"]]=(byS[x["TRẠNG THÁI"]]||0)+1);
     // Doanh thu từ tất cả
     const rev=allValid.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
-    // ★ Lợi nhuận THỰC: trừ giá nhập + ship GZ per món, BOSS ¥200 per khách (name+fb)
-    const bossCust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
-    const profit=allValid.reduce((s,x)=>{
+    // ★ Lợi nhuận THỰC: chỉ tính đơn đã CK (💰CK) — trừ giá nhập + ship GZ per món, BOSS ¥200 per khách (name+fb)
+    const paidOrders=allValid.filter(x=>(x._note||"").includes("💰CK"));
+    const bossCust=[...new Set(paidOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+    const profit=paidOrders.reduce((s,x)=>{
       const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
       const nhap=cat?Number(cat["Giá nhập"]||0):0;
       const qty=Number(x["Số lượng"]||0);
@@ -1018,8 +1019,9 @@ function App(){
               return true;
             });
             const pRev=periodOrders.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
-            const pBossCust=[...new Set(periodOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
-            const pProfit=periodOrders.reduce((s,x)=>{
+            const pPaid=periodOrders.filter(x=>(x._note||"").includes("💰CK"));
+            const pBossCust=[...new Set(pPaid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+            const pProfit=pPaid.reduce((s,x)=>{
               const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
               const nhap=cat?Number(cat["Giá nhập"]||0):0;
               const qty=Number(x["Số lượng"]||0);
