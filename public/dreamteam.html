@@ -1019,7 +1019,16 @@ function App(){
               return true;
             });
             const pRev=periodOrders.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
-            const pPaid=periodOrders.filter(x=>(x._note||"").includes("💰CK"));
+            // ★ Lãi theo NGÀY CK (💰CK yyyy-mm-dd trong note) — không theo ngày đặt
+            const ckDate=x=>{const m=(x._note||"").match(/💰CK\s*(\d{4}-\d{2}-\d{2})/);return m?m[1]:"";};
+            const pPaid=allValid.filter(x=>{
+              const d=ckDate(x);if(!d)return false;
+              if(dashPeriod==="all")return true;
+              if(dashPeriod==="today")return d===todayStr;
+              if(dashPeriod==="week")return d>=weekAgo;
+              if(dashPeriod==="month")return d>=monthAgo;
+              return true;
+            });
             const pBossCust=[...new Set(pPaid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
             const pProfit=pPaid.reduce((s,x)=>{
               const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
