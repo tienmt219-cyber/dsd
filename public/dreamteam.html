@@ -42,6 +42,8 @@ const SC = {"CHƯA ĐẶT":"#94A3B8","Chờ hàng":"#D97706","Đang ship":"#7C3A
 // ★ Chi phí cố định/SP (JPY) — sửa ở đây khi thay đổi
 const SHIP_GZ = 100;  // Ship GZ→JP per item
 const BOSS_PER_ORDER = 200;  // ¥200/khách (mỗi khách = 1 đơn BOSS)
+const PACK_PER_ORDER = 200;  // tiền công đóng gói ¥200/đơn
+const FIXED_MONTHLY = 70000; // chi phí cố định/tháng: thuê thẻ 5man + lưu kho 2man
 const SIZES = ["S","M","L","XL","2XL","3XL","FZ","35","36","37","38","39","40"];
 const COLORS = ["ĐEN","TRẮNG","NÂU","HỒNG","XÁM","XANH THAN","XANH NHẠT","BE","ĐỎ","TÍM","VÀNG"];
 const fmt = n => Number(n||0).toLocaleString("vi-VN");
@@ -748,13 +750,14 @@ function App(){
     // ★ Lợi nhuận THỰC: chỉ tính đơn đã CK (💰CK) — trừ giá nhập + ship GZ per món, BOSS ¥200 per khách (name+fb)
     const paidOrders=allValid.filter(x=>(x._note||"").includes("💰CK"));
     const bossCust=[...new Set(paidOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+    const ckMonths=[...new Set(paidOrders.map(x=>{const m=(x._note||"").match(/💰CK\s*(\d{4}-\d{2})/);return m?m[1]:"";}).filter(Boolean))].length;
     const profit=paidOrders.reduce((s,x)=>{
       const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
       const nhap=cat?Number(cat["Giá nhập"]||0):0;
       const qty=Number(x["Số lượng"]||0);
       const cost=(nhap+SHIP_GZ)*qty;
       return s+(Number(x["Giá sp"])||0)*qty-cost;
-    },0)-BOSS_PER_ORDER*bossCust;
+    },0)-(BOSS_PER_ORDER+PACK_PER_ORDER)*bossCust-FIXED_MONTHLY*ckMonths;
     const cust=[...new Set(allValid.map(x=>x["Tên khách"]))].length;
     const overdue=allValid.filter(x=>{if(["Đã gửi","Về kho"].includes(x["TRẠNG THÁI"]))return false;const d=String(x["NGÀY OD"]||"").slice(0,10);return d&&daysAgo(d)>21;}).length;
     const byDate={};allValid.forEach(x=>{const d=String(x["NGÀY OD"]||"").slice(0,10);if(d)byDate[d]=(byDate[d]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
@@ -1030,12 +1033,13 @@ function App(){
               return true;
             });
             const pBossCust=[...new Set(pPaid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+            const pFixed=dashPeriod==="today"?Math.round(FIXED_MONTHLY/30):dashPeriod==="week"?Math.round(FIXED_MONTHLY*7/30):dashPeriod==="month"?FIXED_MONTHLY:FIXED_MONTHLY*[...new Set(pPaid.map(x=>ckDate(x).slice(0,7)).filter(Boolean))].length;
             const pProfit=pPaid.reduce((s,x)=>{
               const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
               const nhap=cat?Number(cat["Giá nhập"]||0):0;
               const qty=Number(x["Số lượng"]||0);
               return s+(Number(x["Giá sp"])||0)*qty-(nhap+SHIP_GZ)*qty;
-            },0)-BOSS_PER_ORDER*pBossCust;
+            },0)-(BOSS_PER_ORDER+PACK_PER_ORDER)*pBossCust-pFixed;
             const pCust=[...new Set(periodOrders.map(x=>x["Tên khách"]))].length;
             const pSent=periodOrders.filter(x=>x["TRẠNG THÁI"]==="Đã gửi").length;
             const pDebt=periodOrders.filter(x=>x["TRẠNG THÁI"]==="Đã gửi"&&!(x._note||"").includes("💰CK")).reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
@@ -1091,7 +1095,7 @@ function App(){
               const ck=String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim();
               if(ck!=="|"){if(!bossM[m])bossM[m]=new Set();bossM[m].add(ck);}
             });
-            Object.keys(profM).forEach(m=>{profM[m]-=BOSS_PER_ORDER*(bossM[m]?bossM[m].size:0);});
+            Object.keys(profM).forEach(m=>{profM[m]-=(BOSS_PER_ORDER+PACK_PER_ORDER)*(bossM[m]?bossM[m].size:0)+FIXED_MONTHLY;});
             const months=[...new Set([...Object.keys(revM),...Object.keys(profM)])].sort().slice(-12);
             if(!months.length)return null;
             const maxV=Math.max(...months.map(m=>Math.max(revM[m]||0,profM[m]||0)),1);
