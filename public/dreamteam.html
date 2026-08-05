@@ -743,14 +743,16 @@ function App(){
   const stats=useMemo(()=>{
     const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
     const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá"&&x["TRẠNG THÁI"]!=="Lưu trữ");
+    // ★ Tiền (DT + Lãi): tính cả đơn Lưu trữ — chỉ loại Đã xoá (bùng hàng)
+    const allMoney=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá");
     const byS={};ST.forEach(s=>byS[s]=0);
     allValid.forEach(x=>byS[x["TRẠNG THÁI"]]=(byS[x["TRẠNG THÁI"]]||0)+1);
-    // Doanh thu từ tất cả
-    const rev=allValid.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
+    // Doanh thu từ tất cả (kể cả Lưu trữ)
+    const rev=allMoney.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
     // ★ Lợi nhuận: khách trả trước khi OD — tính trên tất cả đơn theo ngày đặt. Trừ giá nhập + ship GZ/món, BOSS + đóng gói/khách, chi phí cố định 7man/tháng
-    const bossCust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
-    const odMonths=[...new Set(allValid.map(x=>String(x["NGÀY OD"]||"").slice(0,7)).filter(Boolean))].length;
-    const profit=allValid.reduce((s,x)=>{
+    const bossCust=[...new Set(allMoney.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+    const odMonths=[...new Set(allMoney.map(x=>String(x["NGÀY OD"]||"").slice(0,7)).filter(Boolean))].length;
+    const profit=allMoney.reduce((s,x)=>{
       const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
       const nhap=cat?Number(cat["Giá nhập"]||0):0;
       const qty=Number(x["Số lượng"]||0);
@@ -1012,7 +1014,7 @@ function App(){
             const now=new Date();const todayStr=now.toISOString().slice(0,10);
             const weekAgo=new Date(now-((now.getDay()+6)%7)*86400000).toISOString().slice(0,10);// từ thứ 2 tuần này
             const monthAgo=todayStr.slice(0,8)+"01";// từ mùng 1 tháng này
-            const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá"&&x["TRẠNG THÁI"]!=="Lưu trữ");
+            const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá");// ★ tính cả Lưu trữ vào DT/Lãi, chỉ loại Đã xoá
             const periodOrders=dashPeriod==="all"?allValid:allValid.filter(o=>{
               const d=String(o["NGÀY OD"]||"").slice(0,10);if(!d)return false;
               if(dashPeriod==="today")return d===todayStr;
@@ -1069,7 +1071,7 @@ function App(){
           </div>
           {(()=>{
             const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
-            const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá"&&x["TRẠNG THÁI"]!=="Lưu trữ");
+            const allValid=orders.filter(x=>x["TRẠNG THÁI"]!=="Đã xoá");// ★ tính cả Lưu trữ, chỉ loại Đã xoá
             // Doanh thu theo tháng đặt
             const revM={};
             allValid.forEach(x=>{const m=String(x["NGÀY OD"]||"").slice(0,7);if(!m)return;revM[m]=(revM[m]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
