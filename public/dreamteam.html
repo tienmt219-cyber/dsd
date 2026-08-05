@@ -1023,6 +1023,18 @@ function App(){
               return true;
             });
             const pRev=periodOrders.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
+            // ★ Đơn = số đơn ĐÃ XUẤT KHO (khách có món 📮SENT trong kỳ, gom tên+FB — 1 khách = 1 đơn BOSS)
+            const sentDate=x=>{const m=(x._note||"").match(/📮SENT\s*(\d{4}-\d{2}-\d{2})/);return m?m[1]:"";};
+            const pShippedOrders=[...new Set(allValid.filter(x=>{
+              if(x["TRẠNG THÁI"]!=="Đã gửi")return false;
+              const d=sentDate(x);
+              if(dashPeriod==="all")return true;
+              if(!d)return false;
+              if(dashPeriod==="today")return d===todayStr;
+              if(dashPeriod==="week")return d>=weekAgo;
+              if(dashPeriod==="month")return d>=monthAgo;
+              return true;
+            }).map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
             // ★ Lãi theo ngày đặt — khách trả tiền trước khi OD
             const pBossCust=[...new Set(periodOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
             const pFixed=dashPeriod==="today"?Math.round(FIXED_MONTHLY/30):dashPeriod==="week"?Math.round(FIXED_MONTHLY*7/30):dashPeriod==="month"?FIXED_MONTHLY:FIXED_MONTHLY*[...new Set(periodOrders.map(x=>String(x["NGÀY OD"]||"").slice(0,7)).filter(Boolean))].length;
@@ -1037,7 +1049,7 @@ function App(){
             const pDebt=periodOrders.filter(x=>x["TRẠNG THÁI"]==="Đã gửi"&&!(x._note||"").includes("💰CK")).reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
             return <>
           <div style={{display:"grid",gridTemplateColumns:mob?"repeat(2,1fr)":"repeat(5,1fr)",gap:8,marginBottom:14}}>
-            {[{l:"Đơn",v:periodOrders.length,c:t.ac},{l:"Khách",v:pCust,c:t.pk},{l:"Doanh thu",v:`¥${fmt(pRev)}`,c:"#D97706"},{l:"Lãi",v:pProfit>0?`¥${fmt(pProfit)}`:"—",c:"#16A34A"},{l:"Đã gửi",v:pSent,c:"#0D9488"}].map((s,i)=>
+            {[{l:"Đơn xuất kho",v:pShippedOrders,c:t.ac},{l:"Khách",v:pCust,c:t.pk},{l:"Doanh thu",v:`¥${fmt(pRev)}`,c:"#D97706"},{l:"Lãi",v:pProfit>0?`¥${fmt(pProfit)}`:"—",c:"#16A34A"},{l:"Đã gửi",v:pSent,c:"#0D9488"}].map((s,i)=>
               <div key={i} style={{background:t.sf,borderRadius:12,padding:"12px 10px",border:`1px solid ${t.bd}`}}>
                 <div style={{fontSize:9,color:s.c,fontWeight:700,textTransform:"uppercase",marginBottom:3}}>{s.l}</div>
                 <div style={{fontSize:mob?14:18,fontWeight:800,color:s.c}}>{s.v}</div>
