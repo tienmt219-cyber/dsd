@@ -747,17 +747,16 @@ function App(){
     allValid.forEach(x=>byS[x["TRẠNG THÁI"]]=(byS[x["TRẠNG THÁI"]]||0)+1);
     // Doanh thu từ tất cả
     const rev=allValid.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
-    // ★ Lợi nhuận THỰC: chỉ tính đơn đã CK (💰CK) — trừ giá nhập + ship GZ per món, BOSS ¥200 per khách (name+fb)
-    const paidOrders=allValid.filter(x=>(x._note||"").includes("💰CK"));
-    const bossCust=[...new Set(paidOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
-    const ckMonths=[...new Set(paidOrders.map(x=>{const m=(x._note||"").match(/💰CK\s*(\d{4}-\d{2})/);return m?m[1]:"";}).filter(Boolean))].length;
-    const profit=paidOrders.reduce((s,x)=>{
+    // ★ Lợi nhuận: khách trả trước khi OD — tính trên tất cả đơn theo ngày đặt. Trừ giá nhập + ship GZ/món, BOSS + đóng gói/khách, chi phí cố định 7man/tháng
+    const bossCust=[...new Set(allValid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+    const odMonths=[...new Set(allValid.map(x=>String(x["NGÀY OD"]||"").slice(0,7)).filter(Boolean))].length;
+    const profit=allValid.reduce((s,x)=>{
       const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
       const nhap=cat?Number(cat["Giá nhập"]||0):0;
       const qty=Number(x["Số lượng"]||0);
       const cost=(nhap+SHIP_GZ)*qty;
       return s+(Number(x["Giá sp"])||0)*qty-cost;
-    },0)-(BOSS_PER_ORDER+PACK_PER_ORDER)*bossCust-FIXED_MONTHLY*ckMonths;
+    },0)-(BOSS_PER_ORDER+PACK_PER_ORDER)*bossCust-FIXED_MONTHLY*odMonths;
     const cust=[...new Set(allValid.map(x=>x["Tên khách"]))].length;
     const overdue=allValid.filter(x=>{if(["Đã gửi","Về kho"].includes(x["TRẠNG THÁI"]))return false;const d=String(x["NGÀY OD"]||"").slice(0,10);return d&&daysAgo(d)>21;}).length;
     const byDate={};allValid.forEach(x=>{const d=String(x["NGÀY OD"]||"").slice(0,10);if(d)byDate[d]=(byDate[d]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
@@ -1022,19 +1021,10 @@ function App(){
               return true;
             });
             const pRev=periodOrders.reduce((s,x)=>s+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0),0);
-            // ★ Lãi theo NGÀY CK (💰CK yyyy-mm-dd trong note) — không theo ngày đặt
-            const ckDate=x=>{const m=(x._note||"").match(/💰CK\s*(\d{4}-\d{2}-\d{2})/);return m?m[1]:"";};
-            const pPaid=allValid.filter(x=>{
-              const d=ckDate(x);if(!d)return false;
-              if(dashPeriod==="all")return true;
-              if(dashPeriod==="today")return d===todayStr;
-              if(dashPeriod==="week")return d>=weekAgo;
-              if(dashPeriod==="month")return d>=monthAgo;
-              return true;
-            });
-            const pBossCust=[...new Set(pPaid.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
-            const pFixed=dashPeriod==="today"?Math.round(FIXED_MONTHLY/30):dashPeriod==="week"?Math.round(FIXED_MONTHLY*7/30):dashPeriod==="month"?FIXED_MONTHLY:FIXED_MONTHLY*[...new Set(pPaid.map(x=>ckDate(x).slice(0,7)).filter(Boolean))].length;
-            const pProfit=pPaid.reduce((s,x)=>{
+            // ★ Lãi theo ngày đặt — khách trả tiền trước khi OD
+            const pBossCust=[...new Set(periodOrders.map(x=>String(x["Tên khách"]||"").trim()+"|"+String(x["Link fb"]||"").trim()).filter(k=>k!=="|"))].length;
+            const pFixed=dashPeriod==="today"?Math.round(FIXED_MONTHLY/30):dashPeriod==="week"?Math.round(FIXED_MONTHLY*7/30):dashPeriod==="month"?FIXED_MONTHLY:FIXED_MONTHLY*[...new Set(periodOrders.map(x=>String(x["NGÀY OD"]||"").slice(0,7)).filter(Boolean))].length;
+            const pProfit=periodOrders.reduce((s,x)=>{
               const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
               const nhap=cat?Number(cat["Giá nhập"]||0):0;
               const qty=Number(x["Số lượng"]||0);
@@ -1083,11 +1073,10 @@ function App(){
             // Doanh thu theo tháng đặt
             const revM={};
             allValid.forEach(x=>{const m=String(x["NGÀY OD"]||"").slice(0,7);if(!m)return;revM[m]=(revM[m]||0)+(Number(x["Giá sp"])||0)*Number(x["Số lượng"]||0);});
-            // Lãi theo tháng CK
-            const ckDate=x=>{const mt=(x._note||"").match(/💰CK\s*(\d{4}-\d{2}-\d{2})/);return mt?mt[1]:"";};
+            // Lãi theo tháng đặt — khách trả trước khi OD
             const profM={};const bossM={};
             allValid.forEach(x=>{
-              const d=ckDate(x);if(!d)return;const m=d.slice(0,7);
+              const m=String(x["NGÀY OD"]||"").slice(0,7);if(!m)return;
               const cat=catalog.find(c=>norm(c["Mã SP"])===norm(x["Mã SP"]));
               const nhap=cat?Number(cat["Giá nhập"]||0):0;
               const qty=Number(x["Số lượng"]||0);
@@ -1104,7 +1093,7 @@ function App(){
                 <div style={{fontSize:12,fontWeight:700,color:t.tx}}>📊 Doanh thu & Lãi theo tháng</div>
                 <div style={{display:"flex",gap:10,fontSize:9,color:t.dm}}>
                   <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#D97706",marginRight:3}}/>DT (theo tháng đặt)</span>
-                  <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#16A34A",marginRight:3}}/>Lãi (theo tháng CK)</span>
+                  <span><span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#16A34A",marginRight:3}}/>Lãi (đã trừ chi phí)</span>
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"flex-end",gap:mob?4:8,height:110,overflowX:"auto"}}>
