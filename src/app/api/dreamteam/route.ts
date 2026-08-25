@@ -99,13 +99,19 @@ async function useSurplus(maSP: string, size: string, color: string, qty: number
   return { tt: found.trangThai || "Về kho", matched };
 }
 
-async function addOrUpdateSurplus(maSP: string, size: string, color: string, qty: number, tt: string) {
+async function addOrUpdateSurplus(maSP: string, size: string, color: string, qty: number, tt: string, replaceExpected = false) {
   const found = await findSurplus(maSP, size, color);
   const today = todayStr();
   if (found) {
+    // ★ FIX đếm 2 lần: khi hàng THỰC TẾ về kho (replaceExpected=true) mà record dư cũ
+    // đang là "dư dự kiến" (Chờ hàng/Đang ship — tạo lúc đặt GZ) → THAY THẾ bằng số
+    // thực tế thay vì cộng dồn. Ví dụ: đặt 8 cần 2 → dư dự kiến 6 (Chờ hàng);
+    // hàng về nhập 8, khớp 2 đơn, thừa 6 → dư = 6 (Về kho), KHÔNG phải 6+6=12.
+    const isExpected = ["Chờ hàng", "Đang ship"].includes(found.trangThai || "");
+    const newSl = replaceExpected && isExpected ? qty : found.sl + qty;
     await prisma.dtSurplus.update({
       where: { id: found.id },
-      data: { sl: found.sl + qty, trangThai: tt, ngayTao: today },
+      data: { sl: newSl, trangThai: tt, ngayTao: today },
     });
   } else {
     await prisma.dtSurplus.create({
@@ -691,12 +697,13 @@ export async function POST(request: NextRequest) {
         const updated: string[] = [];
         for (const match of matches) {
           if (remaining <= 0) break;
+          if (match.soLuong > remaining) continue; // ★ FIX: không đủ hàng cho đơn này → bỏ qua (tránh trừ âm)
           await prisma.dtOrder.update({ where: { rowIndex: match.rowIndex }, data: { trangThai: "Về kho" } });
           updated.push(match.tenKhach);
           remaining -= match.soLuong;
         }
 
-        if (remaining > 0) await addOrUpdateSurplus(maSP, size, color, remaining, "Về kho");
+        if (remaining > 0) await addOrUpdateSurplus(maSP, size, color, remaining, "Về kho", true);
         await updateSurplusTT(maSP, size, color, "Về kho");
 
         result = { success: true, stocked: qty, matched: updated.length, customers: updated, remaining: Math.max(remaining, 0) };
@@ -978,7 +985,7 @@ export async function POST(request: NextRequest) {
           }
 
           if (remaining > 0) {
-            await addOrUpdateSurplus(maSP, size, color, remaining, "Về kho");
+            await addOrUpdateSurplus(maSP, size, color, remaining, "Về kho", true);
             surplusList.push(`${maSP} ${size} ${color} x${remaining}`);
           }
           await updateSurplusTT(maSP, size, color, "Về kho");

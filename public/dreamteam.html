@@ -1924,9 +1924,10 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
     gzData.forEach((g,i)=>{
       if(!sel.keys.has(i)||!g[rowsKey])return;
       g[rowsKey].forEach(o=>{items.push({rowIndex:o._rowIndex,tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||""),newStatus});});
-      // ★ Check hàng dư: cột "Đặt" > số đơn thật
+      // ★ Check hàng dư: cột "Đặt" > số đơn thật (key theo mã+size+màu, không theo vị trí dòng)
       if(stage==="cd"){
-        const actualQty=Number(customQty[i]!==undefined?customQty[i]:g[qtyKey]);
+        const gk=gzKey(g);
+        const actualQty=Number(customQty[gk]!==undefined?customQty[gk]:g[qtyKey]);
         const orderQty=g[qtyKey];
         if(actualQty>orderQty){
           surplusList.push({ma:g.ma,sz:g.size,cl:g.color,qty:actualQty-orderQty});
@@ -1946,16 +1947,17 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
   };
 
   const [customQty,setCustomQty]=useState({});
+  const gzKey=g=>String(g.ma||"").trim().toUpperCase()+"|"+String(g.size||"").trim().toUpperCase()+"|"+String(g.color||"").trim().toUpperCase();
 
   const copyList=(stage)=>{
     const qtyKey=stage==="cd"?"chuaDat":stage==="ds"?"dangShip":"choHang";
     const list=gzData.filter(g=>g[qtyKey]>0);
     const text=list.map(g=>{
-      const ri=gzData.indexOf(g);
-      const qty=customQty[ri]!==undefined?customQty[ri]:g[qtyKey];
+      const gk=gzKey(g);
+      const qty=customQty[gk]!==undefined?customQty[gk]:g[qtyKey];
       return g.ma+" | "+g.size+" | "+g.color+" | SL: "+qty;
     }).join("\n");
-    const total=list.reduce((s,g)=>{const ri=gzData.indexOf(g);return s+(customQty[ri]!==undefined?Number(customQty[ri]):g[qtyKey]);},0);
+    const total=list.reduce((s,g)=>{const gk=gzKey(g);return s+(customQty[gk]!==undefined?Number(customQty[gk]):g[qtyKey]);},0);
     copyText("ĐẶT GZ:\n\n"+text+"\n\nTổng: "+total+" SP");
   };
 
@@ -1984,7 +1986,7 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
             {nextStatus&&<th style={{padding:"6px 4px",width:24}}><input type="checkbox" checked={isSel&&selCount===items.length} onChange={()=>{const idxs=items.map(g=>gzData.indexOf(g));if(isSel&&selCount===items.length)setSel({stage:"",keys:new Set()});else setSel({stage,keys:new Set(idxs)});}}/></th>}
             {["Mã","Tên SP","Sz","Màu","SL","Đặt"].map(h=><th key={h} style={{padding:"6px 4px",textAlign:"left",color:t.dm,fontWeight:600,fontSize:9}}>{h}</th>)}
           </tr></thead>
-          <tbody>{items.map((g,i)=>{const ri=gzData.indexOf(g);const checked=isSel&&sel.keys.has(ri);const editQty=customQty[ri]!==undefined?customQty[ri]:g[qtyKey];
+          <tbody>{items.map((g,i)=>{const ri=gzData.indexOf(g);const gk=gzKey(g);const checked=isSel&&sel.keys.has(ri);const editQty=customQty[gk]!==undefined?customQty[gk]:g[qtyKey];
             return <tr key={ri} style={{borderBottom:"1px solid "+t.bd,background:checked?t.ab:"transparent"}}>
               {nextStatus&&<td style={{padding:"5px 4px"}}><input type="checkbox" checked={checked} onChange={()=>{const ns=new Set(sel.stage===stage?sel.keys:[]);if(ns.has(ri))ns.delete(ri);else ns.add(ri);setSel({stage,keys:ns});}}/></td>}
               <td style={{padding:"5px 4px",fontWeight:600,color:t.ac}}>{g.ma}</td>
@@ -1992,7 +1994,7 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
               <td style={{padding:"5px 4px",fontSize:10}}>{g.size}</td>
               <td style={{padding:"5px 4px",fontSize:10}}>{g.color}</td>
               <td style={{padding:"5px 4px",fontWeight:700,color}}>{g[qtyKey]}</td>
-              <td style={{padding:"5px 4px"}}>{stage==="cd"?<input value={editQty} onChange={e=>setCustomQty(p=>({...p,[ri]:e.target.value}))} type="number" style={{width:40,padding:"2px 4px",borderRadius:4,border:"1px solid "+t.bd,fontSize:11,textAlign:"center",background:t.inp,color:t.tx}}/>:<span style={{color:t.dm,fontSize:10}}>—</span>}</td>
+              <td style={{padding:"5px 4px"}}>{stage==="cd"?<input value={editQty} onChange={e=>setCustomQty(p=>({...p,[gk]:e.target.value}))} type="number" style={{width:40,padding:"2px 4px",borderRadius:4,border:"1px solid "+t.bd,fontSize:11,textAlign:"center",background:t.inp,color:t.tx}}/>:<span style={{color:t.dm,fontSize:10}}>—</span>}</td>
             </tr>;})}</tbody>
         </table>
       </div>
