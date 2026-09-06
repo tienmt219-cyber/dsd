@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma2 as prisma } from "@/lib/prisma2";
 
 // ── auth ────────────────────────────────────────────────────
 

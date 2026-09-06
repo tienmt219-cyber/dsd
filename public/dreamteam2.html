@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#7C3AED">
-<title>Dream Team</title>
+<title>Dream Team 2</title>
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
@@ -34,8 +34,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(124,58,237,.35);o
 <script type="text/babel">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const API = "/api/dreamteam";
-let API_KEY = localStorage.getItem("dt_api_key") || "";
+const API = "/api/dreamteam2";
+let API_KEY = localStorage.getItem("dt2_api_key") || "";
 const BANK_DEFAULT = "🇯🇵 STK Nhật:\nNgân hàng: GMO あおぞらネット銀行 (ジ)\nChi nhánh: 法人営業部(101)(ホ)\nSTK: 2573738\nTên: ド ) キン\n\n🇻🇳 STK Việt Nam:\nNgân hàng: TECHCOMBANK\nSTK: 8109030991196\nTên: TRINH THI PHUONG";
 const ST = ["CHƯA ĐẶT","Chờ hàng","Đang ship","Về kho","Đã gửi"];
 const SC = {"CHƯA ĐẶT":"#94A3B8","Chờ hàng":"#D97706","Đang ship":"#7C3AED","Về kho":"#0D9488","Đã gửi":"#16A34A","Đã xoá":"#DC2626"};
@@ -127,14 +127,14 @@ function copyText(text){
 async function GET(){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
-    try{const r=await fetch(API,{signal:c.signal,headers:{"x-api-key":API_KEY}});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("AUTH");}return j;}
+    try{const r=await fetch(API,{signal:c.signal,headers:{"x-api-key":API_KEY}});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt2_api_key");throw new Error("AUTH");}return j;}
     catch(e){clearTimeout(t);if(e.message==="AUTH")throw e;if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
   }
 }
 async function POST(b){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
-    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("Phiên hết hạn — reload trang");}return j;}
+    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt2_api_key");throw new Error("Phiên hết hạn — reload trang");}return j;}
     catch(e){clearTimeout(t);if(e.message&&e.message.includes("hết hạn"))throw e;if(retry<1){await new Promise(r=>setTimeout(r,1000));continue;}throw new Error("Kết nối chậm — thử lại");}
   }
 }
@@ -571,8 +571,8 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
 
 // ═══ MAIN ═══
 function App(){
-  const [auth,setAuth]=useState(!!API_KEY);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
-  const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt_dark",v?"1":"0")}catch(e){}};
+  const [auth,setAuth]=useState(!!API_KEY);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt2_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
+  const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt2_dark",v?"1":"0")}catch(e){}};
   const [orders,setOrders]=useState([]);const [stock,setStock]=useState([]);const [catalog,setCatalog]=useState([]);const [addrs,setAddrs]=useState({});const [surplus,setSurplus]=useState([]);const [emsHistory,setEmsHistory]=useState([]);
   const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [toast,setToast]=useState(null);const [lastSync,setLastSync]=useState(null);
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
@@ -580,12 +580,12 @@ function App(){
   const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");const [shipSearch,setShipSearch]=useState("");
   const _now=new Date();const [lbMonth,setLbMonth]=useState(_now.getMonth());const [lbYear,setLbYear]=useState(_now.getFullYear());
   const ckOverrides=useRef(null);
-  if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
-  const saveCkOverrides=function(){try{localStorage.setItem("dt_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
-  const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
-  const saveBank=v=>{setBank(v);try{localStorage.setItem("dt_bank",v)}catch(e){}};
-  const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
-  const saveBossDraft=d=>{setBossDraft(d);try{localStorage.setItem("dt_boss_draft",JSON.stringify(d))}catch(e){}};
+  if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt2_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
+  const saveCkOverrides=function(){try{localStorage.setItem("dt2_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
+  const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt2_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
+  const saveBank=v=>{setBank(v);try{localStorage.setItem("dt2_bank",v)}catch(e){}};
+  const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt2_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
+  const saveBossDraft=d=>{setBossDraft(d);try{localStorage.setItem("dt2_boss_draft",JSON.stringify(d))}catch(e){}};
   const addToBossDraft=(items)=>{
     const exist=new Set(bossDraft.map(o=>o._rowIndex));
     const newItems=items.filter(o=>!exist.has(o._rowIndex));
@@ -2036,7 +2036,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   useEffect(()=>{
     if(!emsCode){setSel(new Set());setQtyMap({});setManual([]);return;}
     try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
+      const drafts=JSON.parse(localStorage.getItem("dt2_ems_drafts")||"{}");
       const d=drafts[emsCode.toUpperCase()];
       if(d){
         setSel(new Set(d.sel||[]));
@@ -2050,14 +2050,14 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   useEffect(()=>{
     if(!emsCode)return;
     try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
+      const drafts=JSON.parse(localStorage.getItem("dt2_ems_drafts")||"{}");
       const code=emsCode.toUpperCase();
       if(sel.size===0&&Object.keys(qtyMap).length===0&&manual.length===0){
         delete drafts[code];
       }else{
         drafts[code]={sel:[...sel],qtyMap,manual,savedAt:new Date().toISOString()};
       }
-      localStorage.setItem("dt_ems_drafts",JSON.stringify(drafts));
+      localStorage.setItem("dt2_ems_drafts",JSON.stringify(drafts));
     }catch(e){}
   },[sel,qtyMap,manual,emsCode]);
 
@@ -2082,7 +2082,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   // ★ Lấy danh sách draft đang lưu
   const savedDrafts=useMemo(()=>{
     try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
+      const drafts=JSON.parse(localStorage.getItem("dt2_ems_drafts")||"{}");
       return Object.entries(drafts).map(([code,d])=>({
         code,
         count:(d.sel?.length||0)+(d.manual?.length||0),
@@ -2140,9 +2140,9 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
     await safePost({action:"shipEMSWithStock",ems:{emsCode,items:allLines}},`✅ Kiện ${emsCode} · ${totalQty} SP vào kho`);
     // Xoá draft đã ship
     try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
+      const drafts=JSON.parse(localStorage.getItem("dt2_ems_drafts")||"{}");
       delete drafts[emsCode.toUpperCase()];
-      localStorage.setItem("dt_ems_drafts",JSON.stringify(drafts));
+      localStorage.setItem("dt2_ems_drafts",JSON.stringify(drafts));
     }catch(e){}
     setSel(new Set());setQtyMap({});setManual([]);
     if(clearAfter)setEmsCode("");
@@ -2154,9 +2154,9 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
     if(!emsCode)return;
     if(!confirm(`Xoá draft của mã ${emsCode}?`))return;
     try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
+      const drafts=JSON.parse(localStorage.getItem("dt2_ems_drafts")||"{}");
       delete drafts[emsCode.toUpperCase()];
-      localStorage.setItem("dt_ems_drafts",JSON.stringify(drafts));
+      localStorage.setItem("dt2_ems_drafts",JSON.stringify(drafts));
     }catch(e){}
     setSel(new Set());setQtyMap({});setManual([]);
     msg("🗑 Đã xoá draft");
@@ -3076,7 +3076,7 @@ function LoginScreen({onLogin,t}){
       const r=await fetch(API,{headers:{"x-api-key":pw}});
       const j=await r.json();
       if(r.status===401||j.error==="Unauthorized"){setErr(true);setTimeout(()=>setErr(false),2000);setChecking(false);return;}
-      API_KEY=pw;localStorage.setItem("dt_api_key",pw);onLogin();
+      API_KEY=pw;localStorage.setItem("dt2_api_key",pw);onLogin();
     }catch(e){setErr(true);setTimeout(()=>setErr(false),2000);}
     setChecking(false);
   };
