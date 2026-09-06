@@ -1049,18 +1049,20 @@ export async function POST(request: NextRequest) {
 
       // ══════ editCatalog (kept for frontend compat) ══════
       case "editCatalog": {
+        const existing = await prisma.dtCatalog.findUnique({ where: { maSP: body.maSP as string } });
+        if (!existing) return json({ error: `Không tìm thấy SP ${body.maSP}` });
         const updateData: Record<string, unknown> = {};
         if (body.tenSP !== undefined) updateData.tenSP = body.tenSP;
-        if (body.giaBan !== undefined) {
-          updateData.giaBan = Number(body.giaBan);
-          const giaNhap = body.giaMua != null ? Number(body.giaMua) : undefined;
-          if (giaNhap !== undefined) {
-            updateData.giaMua = giaNhap;
-            updateData.loiNhuan = Number(body.giaBan) - giaNhap;
-            updateData.margin = Number(body.giaBan) > 0 ? (Number(body.giaBan) - giaNhap) / Number(body.giaBan) : 0;
-          }
-        }
+        if (body.giaBan !== undefined) updateData.giaBan = Number(body.giaBan);
         if (body.giaMua !== undefined) updateData.giaMua = Number(body.giaMua);
+        // ★ FIX: LUÔN tính lại lãi + margin khi giá bán HOẶC giá nhập thay đổi
+        // (trước đây chỉ sửa giá nhập thì lãi/margin không được cập nhật)
+        if (body.giaBan !== undefined || body.giaMua !== undefined) {
+          const giaBan = body.giaBan !== undefined ? Number(body.giaBan) : existing.giaBan;
+          const giaMua = body.giaMua !== undefined ? Number(body.giaMua) : (existing.giaMua ?? 0);
+          updateData.loiNhuan = giaBan - giaMua;
+          updateData.margin = giaBan > 0 && giaMua > 0 ? (giaBan - giaMua) / giaBan : 0;
+        }
         if (body.link !== undefined) updateData.image = body.link;
         if (body.image !== undefined) updateData.image = body.image;
         await prisma.dtCatalog.update({ where: { maSP: body.maSP as string }, data: updateData });
