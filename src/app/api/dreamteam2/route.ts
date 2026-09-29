@@ -194,18 +194,22 @@ async function getFullData(skipCache = false) {
 }
 
 async function _buildFullData() {
-  const [orders, stock, catalog, addresses, surplus, emsBatches] = await Promise.all([
+  const [orders, stock, catalog, addresses, surplus, emsBatches, settingRows] = await Promise.all([
     prisma.dtOrder.findMany({ orderBy: { rowIndex: "asc" } }),
     prisma.dtStock.findMany({ orderBy: { id: "asc" } }),
     prisma.dtCatalog.findMany(),
     prisma.dtAddress.findMany(),
     prisma.dtSurplus.findMany(),
     prisma.dtEmsBatch.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.dtSetting.findMany(),
   ]);
+  const settings: Record<string, string> = {};
+  for (const s of settingRows) settings[s.key] = s.value;
 
   return {
     success: true,
     _check: "v4.0.0",
+    settings,
     orders: orders
       .filter((o) => o.trangThai !== "Đã xoá" && o.trangThai !== "Lưu trữ")
       .map((o) => ({
@@ -572,6 +576,7 @@ export async function POST(request: NextRequest) {
           const existing = order.note ?? "";
           if (existing && !note.includes(existing)) note = existing + (note ? " " + note : "");
           if (!note.includes("📮SENT")) note = (note ? note + " " : "") + "📮SENT " + today;
+          if (body.autoCK && !note.includes("💰CK")) note = (note ? note + " " : "") + "💰CK " + today;
 
           await prisma.dtOrder.update({ where: { rowIndex: ri }, data: { trangThai: "Đã gửi", note: note.trim() || null } });
           ok++;
@@ -769,6 +774,16 @@ export async function POST(request: NextRequest) {
         } else if (maSP) {
           await prisma.dtCatalog.update({ where: { maSP }, data: updateData });
         }
+        result = { success: true };
+        break;
+      }
+
+      // ══════ saveSetting ══════
+      case "saveSetting": {
+        const key = String(body.key ?? "").trim();
+        if (!key) return json({ error: "Thiếu key" });
+        const value = String(body.value ?? "");
+        await prisma.dtSetting.upsert({ where: { key }, update: { value }, create: { key, value } });
         result = { success: true };
         break;
       }
