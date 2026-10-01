@@ -571,7 +571,7 @@ function exportShip2Files(items, addrs) {
   Object.values(byCust).forEach(({name,fb})=>{
     const addr=getAddr(addrs,name,fb)||{};
     const full=[addr.pref,addr.city,addr.street].filter(Boolean).join("");
-    const nameEN=removeAccents(name);
+    const nameEN=removeAccents(name).toUpperCase(); // ★ VIẾT HOA KHÔNG DẤU
     const dedupeKey=(nameEN+"|"+(addr.postal||"")+"|"+full).toUpperCase().replace(/\s+/g,"");
     if(seen.has(dedupeKey))return; // trùng tên + địa chỉ → bỏ qua
     seen.add(dedupeKey);
@@ -582,7 +582,7 @@ function exportShip2Files(items, addrs) {
   // ── File 2: picking — ★ có cột Số lượng (gộp dòng trùng SP cùng khách) ──
   const rows2=[["Tên khách","Mã SP","Màu","Size","Số lượng"].map(esc).join(",")];
   Object.values(byCust).forEach(({name,list})=>{
-    const nameEN=removeAccents(name);
+    const nameEN=removeAccents(name).toUpperCase(); // ★ VIẾT HOA KHÔNG DẤU
     // Gộp SP trùng (cùng mã+màu+size) của cùng 1 khách → cộng SL
     const skuMap={};
     list.forEach(o=>{
