@@ -565,17 +565,19 @@ function exportShip2Files(items, addrs) {
     byCust[key].list.push(o);
   });
 
-  // ── File 1: địa chỉ — ★ gộp dòng trùng (cùng tên + cùng địa chỉ → 1 dòng) ──
+  // ── File 1: địa chỉ — theo form PHƯƠNG TRÌNH (dán vào GG Sheet: TÊN NGƯỜI NHẬN | ZIPCODE | ĐỊA CHỈ)
+  // ★ zipcode chuẩn XXX-XXXX · gộp dòng trùng (cùng tên + cùng địa chỉ → 1 dòng)
+  const fmtZip=z=>{const d=String(z||"").replace(/[^0-9]/g,"");return d.length===7?d.slice(0,3)+"-"+d.slice(3):String(z||"").trim();};
   const seen=new Set();
-  const rows1=[["Tên khách","Mã bưu điện","Địa chỉ"].map(esc).join(",")];
+  const rows1=[["TÊN NGƯỜI NHẬN","ZIPCODE","ĐỊA CHỈ"].map(esc).join(",")];
   Object.values(byCust).forEach(({name,fb})=>{
     const addr=getAddr(addrs,name,fb)||{};
     const full=[addr.pref,addr.city,addr.street].filter(Boolean).join("");
     const nameEN=removeAccents(name).toUpperCase(); // ★ VIẾT HOA KHÔNG DẤU
-    const dedupeKey=(nameEN+"|"+(addr.postal||"")+"|"+full).toUpperCase().replace(/\s+/g,"");
+    const dedupeKey=(nameEN+"|"+fmtZip(addr.postal)+"|"+full).toUpperCase().replace(/\s+/g,"");
     if(seen.has(dedupeKey))return; // trùng tên + địa chỉ → bỏ qua
     seen.add(dedupeKey);
-    rows1.push([nameEN,addr.postal||"",full].map(esc).join(","));
+    rows1.push([nameEN,fmtZip(addr.postal),full].map(esc).join(","));
   });
   dl(rows1.join("\r\n"),"DIACHI-"+today+".csv");
 
@@ -600,6 +602,32 @@ function exportShip2Files(items, addrs) {
   });
   setTimeout(()=>dl(rows2.join("\r\n"),"PICKING-"+today+".csv"),1000);
   return Object.keys(byCust).length;
+}
+
+// ★ Copy địa chỉ dạng TAB — dán thẳng vào GG Sheet form PHƯƠNG TRÌNH (3 cột: TÊN NGƯỜI NHẬN | ZIPCODE | ĐỊA CHỈ)
+function copyShipAddresses(items, addrs) {
+  const fmtZip=z=>{const d=String(z||"").replace(/[^0-9]/g,"");return d.length===7?d.slice(0,3)+"-"+d.slice(3):String(z||"").trim();};
+  const byCust={};
+  items.forEach(o=>{
+    const name=String(o["Tên khách"]||"").trim();
+    const fb=String(o["Link fb"]||"").trim();
+    const key=name+"|"+fb;
+    if(!byCust[key])byCust[key]={name,fb};
+  });
+  const seen=new Set();
+  const lines=[];
+  Object.values(byCust).forEach(({name,fb})=>{
+    const addr=getAddr(addrs,name,fb)||{};
+    const full=[addr.pref,addr.city,addr.street].filter(Boolean).join("");
+    const nameEN=removeAccents(name).toUpperCase();
+    const dedupeKey=(nameEN+"|"+fmtZip(addr.postal)+"|"+full).toUpperCase().replace(/\s+/g,"");
+    if(seen.has(dedupeKey))return;
+    seen.add(dedupeKey);
+    // địa chỉ bỏ tab/newline nội bộ để không vỡ cột khi paste
+    lines.push([nameEN,fmtZip(addr.postal),full.replace(/[\t\r\n]+/g," ")].join("\t"));
+  });
+  copyText(lines.join("\n"));
+  return lines.length;
 }
 
 // ═══ INLINE EDIT CELL ═══
@@ -1377,6 +1405,7 @@ function App(){
             <h2 style={{fontSize:18,fontWeight:800,color:t.tx}}>🚚 Chờ gửi</h2>
             <div style={{display:"flex",gap:4}}>
               {shipData.length>0&&<button onClick={()=>{const checked=active.filter(o=>o["TRẠNG THÁI"]==="Về kho"&&shipSel.has(o._rowIndex));if(!checked.length){msg("⚠️ Chưa tick đơn nào");return;}const withAddr=checked.filter(o=>{const a=getAddr(addrs,String(o["Tên khách"]||"").trim(),String(o["Link fb"]||"").trim());return a&&(a.postal||a.pref||a.city||a.street);});const skipped=checked.length-withAddr.length;if(!withAddr.length){msg("⚠️ Không có đơn nào đủ địa chỉ");return;}const added=addToBossDraft(withAddr);if(added)msg(`✅ Đã thêm ${added} đơn vào BOSS draft`+(skipped>0?` (bỏ ${skipped} chưa có ĐC)`:""));}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#EA580C",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📋 +Draft ({[...shipSel].length||0})</button>}
+              {bossDraft.length>0&&<button onClick={()=>{const n=copyShipAddresses(bossDraft,addrs);msg(`📋 Đã copy ${n} địa chỉ — dán thẳng vào GG Sheet (3 cột)`);}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#0D9488",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📋 Copy ĐC</button>}
               {bossDraft.length>0&&!draftExported&&<button onClick={()=>{const n=exportShip2Files(bossDraft,addrs);setDraftExported(true);msg(`📥 Đã tải 2 file (${n} khách) — check xong bấm ✅ Xác nhận gửi`);}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#7C3AED",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📥 Tải 2 file ({bossDraft.length})</button>}
               {bossDraft.length>0&&!draftExported&&<button onClick={()=>{exportBOSS(bossDraft,addrs);setDraftExported(true);msg("📥 CSV BOSS đã tải — check file rồi bấm ✅ Xác nhận gửi");}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#2563EB",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📥 BOSS cũ ({bossDraft.length})</button>}
               {draftExported&&<button onClick={async()=>{if(!confirm(`✅ File CSV OK? Chuyển ${bossDraft.length} đơn → "Đã gửi"?`))return;const data=bossDraft.map(o=>({rowIndex:o._rowIndex,tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}));await safePost({action:"shipItems",items:data,tracking:"BOSS",autoCK:true},`✅ ${bossDraft.length} đơn → Đã gửi + 💰CK`);clearBossDraft();setDraftExported(false);setDraftAddrStatus({});}} disabled={busy} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#059669",color:"#fff",fontSize:10,fontWeight:600,cursor:busy?"wait":"pointer",opacity:busy?.6:1,animation:"pulse 1.5s infinite"}}>✅ Xác nhận gửi</button>}
