@@ -546,10 +546,16 @@ function exportBOSS(items, addrs) {
 // ★ Xuất 2 file gửi hàng: File 1 = Tên khách | Mã bưu điện | Địa chỉ (gộp, không SĐT); File 2 = Picking: Tên khách | Mã SP | Màu | Size
 function exportShip2Files(items, addrs) {
   const today=new Date().toISOString().slice(0,10).replace(/-/g,"");
-  const dl=(csv,fname)=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));a.download=fname;a.click();};
+  // ★ Fix tải 2 file: anchor phải gắn vào DOM + giãn thời gian, nếu không browser chỉ giữ file cuối
+  const dl=(csv,fname)=>{
+    const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");a.href=url;a.download=fname;a.style.display="none";
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
+  };
   const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
 
-  // Group theo khách (name+fb) — file 1 mỗi khách 1 dòng
+  // Group theo khách (name+fb)
   const byCust={};
   items.forEach(o=>{
     const name=String(o["Tên khách"]||"").trim();
@@ -559,12 +565,17 @@ function exportShip2Files(items, addrs) {
     byCust[key].list.push(o);
   });
 
-  // ── File 1: địa chỉ ──
+  // ── File 1: địa chỉ — ★ gộp dòng trùng (cùng tên + cùng địa chỉ → 1 dòng) ──
+  const seen=new Set();
   const rows1=[["Tên khách","Mã bưu điện","Địa chỉ"].map(esc).join(",")];
   Object.values(byCust).forEach(({name,fb})=>{
     const addr=getAddr(addrs,name,fb)||{};
     const full=[addr.pref,addr.city,addr.street].filter(Boolean).join("");
-    rows1.push([removeAccents(name),addr.postal||"",full].map(esc).join(","));
+    const nameEN=removeAccents(name);
+    const dedupeKey=(nameEN+"|"+(addr.postal||"")+"|"+full).toUpperCase().replace(/\s+/g,"");
+    if(seen.has(dedupeKey))return; // trùng tên + địa chỉ → bỏ qua
+    seen.add(dedupeKey);
+    rows1.push([nameEN,addr.postal||"",full].map(esc).join(","));
   });
   dl(rows1.join("\r\n"),"DIACHI-"+today+".csv");
 
@@ -578,7 +589,7 @@ function exportShip2Files(items, addrs) {
       }
     });
   });
-  setTimeout(()=>dl(rows2.join("\r\n"),"PICKING-"+today+".csv"),300);
+  setTimeout(()=>dl(rows2.join("\r\n"),"PICKING-"+today+".csv"),1000);
   return Object.keys(byCust).length;
 }
 
