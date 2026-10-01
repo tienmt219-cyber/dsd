@@ -579,14 +579,23 @@ function exportShip2Files(items, addrs) {
   });
   dl(rows1.join("\r\n"),"DIACHI-"+today+".csv");
 
-  // ── File 2: picking ──
-  const rows2=[["Tên khách","Mã SP","Màu","Size"].map(esc).join(",")];
+  // ── File 2: picking — ★ có cột Số lượng (gộp dòng trùng SP cùng khách) ──
+  const rows2=[["Tên khách","Mã SP","Màu","Size","Số lượng"].map(esc).join(",")];
   Object.values(byCust).forEach(({name,list})=>{
+    const nameEN=removeAccents(name);
+    // Gộp SP trùng (cùng mã+màu+size) của cùng 1 khách → cộng SL
+    const skuMap={};
     list.forEach(o=>{
+      const ma=String(o["Mã SP"]||"").trim();
+      const color=String(o["COLOR"]||"").trim();
+      const size=String(o["SIZE"]||"").trim().toUpperCase();
       const qty=Math.max(1,Number(o["Số lượng"]||1));
-      for(let i=0;i<qty;i++){
-        rows2.push([removeAccents(name),String(o["Mã SP"]||"").trim(),String(o["COLOR"]||"").trim(),String(o["SIZE"]||"").trim().toUpperCase()].map(esc).join(","));
-      }
+      const k=(ma+"|"+color+"|"+size).toUpperCase();
+      if(!skuMap[k])skuMap[k]={ma,color,size,qty:0};
+      skuMap[k].qty+=qty;
+    });
+    Object.values(skuMap).forEach(s=>{
+      rows2.push([nameEN,s.ma,s.color,s.size,s.qty].map(esc).join(","));
     });
   });
   setTimeout(()=>dl(rows2.join("\r\n"),"PICKING-"+today+".csv"),1000);
