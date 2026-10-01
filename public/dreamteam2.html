@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#7C3AED">
-<title>Dream Team</title>
+<title>Dream Team 2</title>
 <link rel="icon" href="/icon-192.png">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
@@ -34,9 +34,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid rgba(124,58,237,.35);o
 <script type="text/babel">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-const API = "/api/dreamteam";
-let API_KEY = localStorage.getItem("dt_api_key") || "";
-const BANK_DEFAULT = "🇯🇵 STK Nhật:\nNgân hàng: 三菱UFJ銀行\nChi nhánh: 柏支店（かしわ）(454)\nSTK: 0509306\nTên: グエン　ダン　ティエン\n\n🇻🇳 STK Việt Nam:\nNgân hàng: TECHCOMBANK\nSTK: 8109030991196\nTên: TRINH THI PHUONG";
+const API = "/api/dreamteam2";
+let API_KEY = localStorage.getItem("dt2_api_key") || "";
+const BANK_DEFAULT = "🇯🇵 STK Nhật:\nNgân hàng: 三菱UFJ銀行\nChi nhánh: 柏支店（かしわ）(454)\nSTK: 0509306\nTên: グエン　ダン　ティエン\n\n🇻🇳 STK Việt Nam:\nNgân hàng: TECHCOMBANK\nSTK: 8109030991196\nTên: TRINH THI PHUONG\n\nSau khi nhận được chuyển khoản, shop sẽ chuẩn bị và gửi hàng trong 2–3 ngày. Shop sẽ báo lại ngay khi đơn được gửi nhé 🫶\nXin cảm ơn ạ";
 const ST = ["CHƯA ĐẶT","Chờ hàng","Đang ship","Về kho","Đã gửi"];
 const SC = {"CHƯA ĐẶT":"#94A3B8","Chờ hàng":"#D97706","Đang ship":"#7C3AED","Về kho":"#0D9488","Đã gửi":"#16A34A","Đã xoá":"#DC2626"};
 // ★ Chi phí cố định/SP (JPY) — sửa ở đây khi thay đổi
@@ -127,14 +127,14 @@ function copyText(text){
 async function GET(){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
-    try{const r=await fetch(API,{signal:c.signal,headers:{"x-api-key":API_KEY}});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("AUTH");}return j;}
+    try{const r=await fetch(API,{signal:c.signal,headers:{"x-api-key":API_KEY}});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt2_api_key");throw new Error("AUTH");}return j;}
     catch(e){clearTimeout(t);if(e.message==="AUTH")throw e;if(retry===0)continue;throw new Error("Kết nối chậm — bấm 🔄");}
   }
 }
 async function POST(b){
   for(let retry=0;retry<2;retry++){
     const c=new AbortController();const t=setTimeout(()=>c.abort(),10000);
-    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt_api_key");throw new Error("Phiên hết hạn — reload trang");}return j;}
+    try{const r=await fetch(API,{method:"POST",headers:{"Content-Type":"application/json","x-api-key":API_KEY},body:JSON.stringify(b),signal:c.signal});clearTimeout(t);const j=await r.json();if(r.status===401){API_KEY="";localStorage.removeItem("dt2_api_key");throw new Error("Phiên hết hạn — reload trang");}return j;}
     catch(e){clearTimeout(t);if(e.message&&e.message.includes("hết hạn"))throw e;if(retry<1){await new Promise(r=>setTimeout(r,1000));continue;}throw new Error("Kết nối chậm — thử lại");}
   }
 }
@@ -543,6 +543,56 @@ function exportBOSS(items, addrs) {
   return Object.keys(byCust).length;
 }
 
+// ★ Xuất 2 file gửi hàng: File 1 = Tên khách | Mã bưu điện | Địa chỉ (gộp, không SĐT); File 2 = Picking: Tên khách | Mã SP | Màu | Size
+function exportShip2Files(items, addrs) {
+  const today=new Date().toISOString().slice(0,10).replace(/-/g,"");
+  // ★ Fix tải 2 file: anchor phải gắn vào DOM + giãn thời gian, nếu không browser chỉ giữ file cuối
+  const dl=(csv,fname)=>{
+    const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");a.href=url;a.download=fname;a.style.display="none";
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{document.body.removeChild(a);URL.revokeObjectURL(url);},3000);
+  };
+  const esc=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+
+  // Group theo khách (name+fb)
+  const byCust={};
+  items.forEach(o=>{
+    const name=String(o["Tên khách"]||"").trim();
+    const fb=String(o["Link fb"]||"").trim();
+    const key=name+"|"+fb;
+    if(!byCust[key])byCust[key]={name,fb,list:[]};
+    byCust[key].list.push(o);
+  });
+
+  // ── File 1: địa chỉ — ★ gộp dòng trùng (cùng tên + cùng địa chỉ → 1 dòng) ──
+  const seen=new Set();
+  const rows1=[["Tên khách","Mã bưu điện","Địa chỉ"].map(esc).join(",")];
+  Object.values(byCust).forEach(({name,fb})=>{
+    const addr=getAddr(addrs,name,fb)||{};
+    const full=[addr.pref,addr.city,addr.street].filter(Boolean).join("");
+    const nameEN=removeAccents(name);
+    const dedupeKey=(nameEN+"|"+(addr.postal||"")+"|"+full).toUpperCase().replace(/\s+/g,"");
+    if(seen.has(dedupeKey))return; // trùng tên + địa chỉ → bỏ qua
+    seen.add(dedupeKey);
+    rows1.push([nameEN,addr.postal||"",full].map(esc).join(","));
+  });
+  dl(rows1.join("\r\n"),"DIACHI-"+today+".csv");
+
+  // ── File 2: picking ──
+  const rows2=[["Tên khách","Mã SP","Màu","Size"].map(esc).join(",")];
+  Object.values(byCust).forEach(({name,list})=>{
+    list.forEach(o=>{
+      const qty=Math.max(1,Number(o["Số lượng"]||1));
+      for(let i=0;i<qty;i++){
+        rows2.push([removeAccents(name),String(o["Mã SP"]||"").trim(),String(o["COLOR"]||"").trim(),String(o["SIZE"]||"").trim().toUpperCase()].map(esc).join(","));
+      }
+    });
+  });
+  setTimeout(()=>dl(rows2.join("\r\n"),"PICKING-"+today+".csv"),1000);
+  return Object.keys(byCust).length;
+}
+
 // ═══ INLINE EDIT CELL ═══
 function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catalog,t,onSave}){
   const [editing,setEditing]=useState(false);
@@ -571,8 +621,8 @@ function InlineCell({value,field,rowIndex,type,options,safePost,busy,style,catal
 
 // ═══ MAIN ═══
 function App(){
-  const [auth,setAuth]=useState(!!API_KEY);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
-  const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt_dark",v?"1":"0")}catch(e){}};
+  const [auth,setAuth]=useState(!!API_KEY);const [dark,setDark]=useState(()=>{try{return localStorage.getItem("dt2_dark")==="1"}catch(e){return false}});const [tab,setTab]=useState("dash");const [dashPeriod,setDashPeriod]=useState("all");
+  const toggleDark=()=>{const v=!dark;setDark(v);try{localStorage.setItem("dt2_dark",v?"1":"0")}catch(e){}};
   const [orders,setOrders]=useState([]);const [stock,setStock]=useState([]);const [catalog,setCatalog]=useState([]);const [addrs,setAddrs]=useState({});const [surplus,setSurplus]=useState([]);const [emsHistory,setEmsHistory]=useState([]);
   const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [toast,setToast]=useState(null);const [lastSync,setLastSync]=useState(null);
   const [mAdd,setMAdd]=useState(false);const [mCust,setMCust]=useState(null);const [mEdit,setMEdit]=useState(null);
@@ -580,12 +630,12 @@ function App(){
   const [sel,setSel]=useState(new Set());const [shipSel,setShipSel]=useState(new Set());const [sortBy,setSortBy]=useState("date");const [sortDir,setSortDir]=useState("desc");const [ckView,setCkView]=useState("chua");const [shipSearch,setShipSearch]=useState("");
   const _now=new Date();const [lbMonth,setLbMonth]=useState(_now.getMonth());const [lbYear,setLbYear]=useState(_now.getFullYear());
   const ckOverrides=useRef(null);
-  if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
-  const saveCkOverrides=function(){try{localStorage.setItem("dt_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
-  const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
-  const saveBank=v=>{setBank(v);try{localStorage.setItem("dt_bank",v)}catch(e){}};
-  const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
-  const saveBossDraft=d=>{setBossDraft(d);try{localStorage.setItem("dt_boss_draft",JSON.stringify(d))}catch(e){}};
+  if(!ckOverrides.current){try{ckOverrides.current=new Map(JSON.parse(localStorage.getItem("dt2_ck_overrides")||"[]"));}catch(e){ckOverrides.current=new Map();}}
+  const saveCkOverrides=function(){try{localStorage.setItem("dt2_ck_overrides",JSON.stringify(Array.from(ckOverrides.current.entries())));}catch(e){}};
+  const [bank,setBank]=useState(()=>{try{return localStorage.getItem("dt2_bank")||BANK_DEFAULT}catch(e){return BANK_DEFAULT}});
+  const saveBank=v=>{setBank(v);try{localStorage.setItem("dt2_bank",v)}catch(e){};POST({action:"saveSetting",key:"bank_info",value:v}).then(r=>{if(r&&r.success)msg("✅ Đã lưu STK lên server");else msg("⚠️ Lưu STK server lỗi — đã lưu tạm trên máy này");}).catch(()=>msg("⚠️ Lưu STK server lỗi — đã lưu tạm trên máy này"));};
+  const [bossDraft,setBossDraft]=useState(()=>{try{const d=localStorage.getItem("dt2_boss_draft");return d?JSON.parse(d):[]}catch(e){return []}});
+  const saveBossDraft=d=>{setBossDraft(d);try{localStorage.setItem("dt2_boss_draft",JSON.stringify(d))}catch(e){}};
   const addToBossDraft=(items)=>{
     const exist=new Set(bossDraft.map(o=>o._rowIndex));
     const newItems=items.filter(o=>!exist.has(o._rowIndex));
@@ -682,7 +732,9 @@ function App(){
         return {...o,_note:ov};
       });
     }
-    setOrders(merged);setStock(d.stock||[]);setCatalog(d.catalog||[]);setAddrs(sanitizeAddrs(d.addresses||{}));setSurplus(d.surplus||[]);setEmsHistory(d.emsHistory||[]);setLastSync(new Date().toLocaleTimeString("vi-VN"));}},[]);
+    setOrders(merged);setStock(d.stock||[]);setCatalog(d.catalog||[]);setAddrs(sanitizeAddrs(d.addresses||{}));setSurplus(d.surplus||[]);setEmsHistory(d.emsHistory||[]);
+    if(d.settings&&d.settings.bank_info){setBank(d.settings.bank_info);try{localStorage.setItem("dt2_bank",d.settings.bank_info)}catch(e){}}
+    setLastSync(new Date().toLocaleTimeString("vi-VN"));}},[]);
   const load=useCallback(async s=>{if(!s)setLoading(true);try{const d=await GET();if(d.success)sync(d);}catch(e){if(!s)msg("❌ "+e.message);}if(!s)setLoading(false);},[msg,sync]);
   useEffect(()=>{if(auth)load();},[auth,load]);
   const busyRef=useRef(false);
@@ -948,7 +1000,7 @@ function App(){
   if(!auth)return <LoginScreen onLogin={()=>setAuth(true)} t={t}/>;
 
   const chuaCKcount=useMemo(()=>shipped.filter(o=>!(o._note||"").includes("💰CK")&&!["Đã xoá","Lưu trữ"].includes(o["TRẠNG THÁI"])).length,[shipped]);
-  const NAV=[{id:"dash",icon:"📊",l:"Dashboard"},{id:"orders",icon:"📋",l:"Đơn",n:active.length},{id:"gz",icon:"🏭",l:"Đặt GZ",n:gzCounts.cd},{id:"ems",icon:"✈️",l:"EMS",n:gzCounts.ch||""},{id:"ship",icon:"🚚",l:"Chờ gửi",n:stats.byS["Về kho"]||0},{id:"stock",icon:"📦",l:"Kho",n:stock.length},{id:"product",icon:"🏷️",l:"SP",n:catalog.length},{id:"tools",icon:"🛠",l:"Tools"},{id:"history",icon:"💳",l:chuaCKcount>0?`CK(${chuaCKcount})`:"Đã gửi",n:chuaCKcount||shipped.length}];
+  const NAV=[{id:"dash",icon:"📊",l:"Dashboard"},{id:"orders",icon:"📋",l:"Đơn",n:active.length},{id:"gz",icon:"🏭",l:"Đặt GZ",n:gzCounts.cd},{id:"ems",icon:"📥",l:"Nhập kho",n:gzCounts.ch||""},{id:"ship",icon:"🚚",l:"Chờ gửi",n:stats.byS["Về kho"]||0},{id:"stock",icon:"📦",l:"Kho",n:stock.length},{id:"product",icon:"🏷️",l:"SP",n:catalog.length},{id:"tools",icon:"🛠",l:"Tools"},{id:"history",icon:"💳",l:chuaCKcount>0?`CK(${chuaCKcount})`:"Đã gửi",n:chuaCKcount||shipped.length}];
 
   return <div style={{display:"flex",minHeight:"100vh",background:t.bg,fontFamily:"system-ui,-apple-system,sans-serif",flexDirection:mob?"column":"row"}}>
     <style>{`*{box-sizing:border-box;margin:0;padding:0}input,select,button{font-family:inherit}input:focus,select:focus{outline:none}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${t.bd};border-radius:2px}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
@@ -1316,8 +1368,9 @@ function App(){
             <h2 style={{fontSize:18,fontWeight:800,color:t.tx}}>🚚 Chờ gửi</h2>
             <div style={{display:"flex",gap:4}}>
               {shipData.length>0&&<button onClick={()=>{const checked=active.filter(o=>o["TRẠNG THÁI"]==="Về kho"&&shipSel.has(o._rowIndex));if(!checked.length){msg("⚠️ Chưa tick đơn nào");return;}const withAddr=checked.filter(o=>{const a=getAddr(addrs,String(o["Tên khách"]||"").trim(),String(o["Link fb"]||"").trim());return a&&(a.postal||a.pref||a.city||a.street);});const skipped=checked.length-withAddr.length;if(!withAddr.length){msg("⚠️ Không có đơn nào đủ địa chỉ");return;}const added=addToBossDraft(withAddr);if(added)msg(`✅ Đã thêm ${added} đơn vào BOSS draft`+(skipped>0?` (bỏ ${skipped} chưa có ĐC)`:""));}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#EA580C",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📋 +Draft ({[...shipSel].length||0})</button>}
-              {bossDraft.length>0&&!draftExported&&<button onClick={()=>{exportBOSS(bossDraft,addrs);setDraftExported(true);msg("📥 CSV đã tải — check file rồi bấm ✅ Xác nhận gửi");}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#2563EB",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📥 Tải CSV ({bossDraft.length})</button>}
-              {draftExported&&<button onClick={async()=>{if(!confirm(`✅ File CSV OK? Chuyển ${bossDraft.length} đơn → "Đã gửi"?`))return;const data=bossDraft.map(o=>({rowIndex:o._rowIndex,tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}));await safePost({action:"shipItems",items:data,tracking:"BOSS"},`✅ ${bossDraft.length} đơn → Đã gửi`);clearBossDraft();setDraftExported(false);setDraftAddrStatus({});}} disabled={busy} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#059669",color:"#fff",fontSize:10,fontWeight:600,cursor:busy?"wait":"pointer",opacity:busy?.6:1,animation:"pulse 1.5s infinite"}}>✅ Xác nhận gửi</button>}
+              {bossDraft.length>0&&!draftExported&&<button onClick={()=>{const n=exportShip2Files(bossDraft,addrs);setDraftExported(true);msg(`📥 Đã tải 2 file (${n} khách) — check xong bấm ✅ Xác nhận gửi`);}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#7C3AED",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📥 Tải 2 file ({bossDraft.length})</button>}
+              {bossDraft.length>0&&!draftExported&&<button onClick={()=>{exportBOSS(bossDraft,addrs);setDraftExported(true);msg("📥 CSV BOSS đã tải — check file rồi bấm ✅ Xác nhận gửi");}} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#2563EB",color:"#fff",fontSize:10,fontWeight:600,cursor:"pointer"}}>📥 BOSS cũ ({bossDraft.length})</button>}
+              {draftExported&&<button onClick={async()=>{if(!confirm(`✅ File CSV OK? Chuyển ${bossDraft.length} đơn → "Đã gửi"?`))return;const data=bossDraft.map(o=>({rowIndex:o._rowIndex,tenKhach:String(o["Tên khách"]||"").trim(),maSP:String(o["Mã SP"]||"")}));await safePost({action:"shipItems",items:data,tracking:"BOSS",autoCK:true},`✅ ${bossDraft.length} đơn → Đã gửi + 💰CK`);clearBossDraft();setDraftExported(false);setDraftAddrStatus({});}} disabled={busy} style={{padding:"6px 12px",borderRadius:8,border:"none",background:"#059669",color:"#fff",fontSize:10,fontWeight:600,cursor:busy?"wait":"pointer",opacity:busy?.6:1,animation:"pulse 1.5s infinite"}}>✅ Xác nhận gửi</button>}
               {draftExported&&<button onClick={()=>{setDraftExported(false);msg("↩ Huỷ — đơn vẫn ở draft");}} style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:"#D97706",fontSize:10,cursor:"pointer"}}>✕ Huỷ</button>}
             </div>
           </div>
@@ -2024,42 +2077,13 @@ function GZTab({gzData,gzCounts,surplusData,safePost,busy,t,mob,msg}){
 // ═══ EMS TAB ═══
 function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   const [sel,setSel]=useState(new Set());
-  const [emsCode,setEmsCode]=useState("");
   const [qtyMap,setQtyMap]=useState({});
   const [manual,setManual]=useState([]);
   const [editingHist,setEditingHist]=useState(null); // {rowIndex, emsCode, items}
-  const [searchWait,setSearchWait]=useState(""); // ★ v3.2: search Chờ hàng
-  const [searchHist,setSearchHist]=useState(""); // ★ v3.2: search Lịch sử EMS
+  const [searchWait,setSearchWait]=useState(""); // ★ search Chờ hàng
+  const [searchHist,setSearchHist]=useState(""); // ★ search Lịch sử nhập kho
+  const [showVerify,setShowVerify]=useState(false); // ★ cửa sổ kiểm tra trước khi nhập kho
   const norm=v=>String(v||"").replace(/\.0$/,"").trim().toUpperCase();
-
-  // ★ Load draft khi đổi mã EMS
-  useEffect(()=>{
-    if(!emsCode){setSel(new Set());setQtyMap({});setManual([]);return;}
-    try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
-      const d=drafts[emsCode.toUpperCase()];
-      if(d){
-        setSel(new Set(d.sel||[]));
-        setQtyMap(d.qtyMap||{});
-        setManual(d.manual||[]);
-      }
-    }catch(e){}
-  },[emsCode]);
-
-  // ★ Auto-save draft khi sel/qtyMap/manual đổi
-  useEffect(()=>{
-    if(!emsCode)return;
-    try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
-      const code=emsCode.toUpperCase();
-      if(sel.size===0&&Object.keys(qtyMap).length===0&&manual.length===0){
-        delete drafts[code];
-      }else{
-        drafts[code]={sel:[...sel],qtyMap,manual,savedAt:new Date().toISOString()};
-      }
-      localStorage.setItem("dt_ems_drafts",JSON.stringify(drafts));
-    }catch(e){}
-  },[sel,qtyMap,manual,emsCode]);
 
   // Lookup ảnh từ catalog theo mã SP
   const getImg=(ma)=>{
@@ -2079,19 +2103,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
     return Object.entries(map).map(([k,v])=>({key:k,...v})).sort((a,b)=>b.qty-a.qty);
   },[active]);
 
-  // ★ Lấy danh sách draft đang lưu
-  const savedDrafts=useMemo(()=>{
-    try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
-      return Object.entries(drafts).map(([code,d])=>({
-        code,
-        count:(d.sel?.length||0)+(d.manual?.length||0),
-        savedAt:d.savedAt
-      })).sort((a,b)=>(b.savedAt||"").localeCompare(a.savedAt||""));
-    }catch(e){return [];}
-  },[emsCode,sel,qtyMap,manual]);
-
-  // ★ v3.2: filter Chờ hàng theo search (mã SP / tên SP / size / color)
+  // ★ filter Chờ hàng theo search (mã SP / tên SP / size / color)
   const choHangFiltered=useMemo(()=>{
     const q=searchWait.trim().toLowerCase();
     if(!q)return choHang;
@@ -2112,8 +2124,7 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
   const totalQty=allLines.reduce((s,l)=>s+l.qty,0);
 
   const copyPacking=()=>{
-    const lines=allLines.map(l=>`${l.ma} | ${l.size} | ${l.color} | x${l.qty}`);
-    const txt=`📦 KIỆN EMS: ${emsCode||"_______________"}\n${"━".repeat(35)}\n\n${"STT".padEnd(4)}${"Mã SP".padEnd(10)}${"Size".padEnd(6)}${"Màu".padEnd(12)}${"SL"}\n${"─".repeat(35)}\n${allLines.map((l,i)=>`${String(i+1).padEnd(4)}${String(l.ma).padEnd(10)}${String(l.size).padEnd(6)}${String(l.color).padEnd(12)}${l.qty}`).join("\n")}\n${"─".repeat(35)}\nTổng: ${totalQty} SP · ${allLines.length} SKU\n${"━".repeat(35)}\n\n📅 ${new Date().toLocaleDateString("vi-VN")}\n🌸 Shop MAM`;
+    const txt=`📥 NHẬP KHO\n${"━".repeat(35)}\n\n${"STT".padEnd(4)}${"Mã SP".padEnd(10)}${"Size".padEnd(6)}${"Màu".padEnd(12)}${"SL"}\n${"─".repeat(35)}\n${allLines.map((l,i)=>`${String(i+1).padEnd(4)}${String(l.ma).padEnd(10)}${String(l.size).padEnd(6)}${String(l.color).padEnd(12)}${l.qty}`).join("\n")}\n${"─".repeat(35)}\nTổng: ${totalQty} SP · ${allLines.length} SKU\n${"━".repeat(35)}\n\n📅 ${new Date().toLocaleDateString("vi-VN")}\n🌸 Shop MAM`;
     copyText(txt);
     msg("📋 Đã copy packing list");
   };
@@ -2124,43 +2135,43 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
       const imgHtml=img?`<img src="${img}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #eee" onerror="this.style.display='none'"/>`:`<div style="width:60px;height:60px;background:#f3f3f3;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#999">No img</div>`;
       return `<tr><td>${i+1}</td><td style="padding:4px">${imgHtml}</td><td><b>${l.ma}</b></td><td>${l.size}</td><td>${l.color}</td><td style="text-align:right"><b>${l.qty}</b></td></tr>`;
     }).join("");
-    const html=`<html><head><meta charset="utf-8"><title>EMS ${emsCode||""}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;padding:30px;font-size:13px}h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#666;margin-bottom:16px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#7C3AED;color:#fff;padding:8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}.total{font-size:16px;font-weight:bold;margin:12px 0;padding:10px;background:#F3EEFF;border-radius:8px}.ems{font-family:monospace;font-size:20px;font-weight:bold;letter-spacing:2px;padding:10px;border:2px solid #F59E0B;border-radius:8px;text-align:center;margin:12px 0;background:#FFFBEB}.footer{margin-top:20px;color:#999;font-size:10px;border-top:1px solid #eee;padding-top:8px}img{display:block}@media print{body{padding:15px}img{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><h1>📦 PACKING LIST</h1><h2>${new Date().toLocaleDateString("vi-VN")} · Shop MAM</h2><div class="ems">EMS: ${emsCode||"_______________"}</div><table><thead><tr><th>#</th><th>Ảnh</th><th>Mã SP</th><th>Size</th><th>Màu</th><th style="text-align:right">SL</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Tổng: ${totalQty} SP · ${allLines.length} SKU</div><div class="footer">Dream Team · Auto generated</div></body></html>`;
+    const html=`<html><head><meta charset="utf-8"><title>Nhập kho</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;padding:30px;font-size:13px}h1{font-size:18px;margin-bottom:4px}h2{font-size:13px;color:#666;margin-bottom:16px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#7C3AED;color:#fff;padding:8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}.total{font-size:16px;font-weight:bold;margin:12px 0;padding:10px;background:#F3EEFF;border-radius:8px}.ems{font-family:monospace;font-size:20px;font-weight:bold;letter-spacing:2px;padding:10px;border:2px solid #F59E0B;border-radius:8px;text-align:center;margin:12px 0;background:#FFFBEB}.footer{margin-top:20px;color:#999;font-size:10px;border-top:1px solid #eee;padding-top:8px}img{display:block}@media print{body{padding:15px}img{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><h1>📦 PACKING LIST</h1><h2>${new Date().toLocaleDateString("vi-VN")} · Shop MAM</h2><div class="ems">📥 NHẬP KHO</div><table><thead><tr><th>#</th><th>Ảnh</th><th>Mã SP</th><th>Size</th><th>Màu</th><th style="text-align:right">SL</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Tổng: ${totalQty} SP · ${allLines.length} SKU</div><div class="footer">Dream Team · Auto generated</div></body></html>`;
     const w=window.open("","_blank","width=700,height=900");
     if(w){w.document.write(html);w.document.close();setTimeout(()=>{w.print();},1000);}
   };
 
-  // ★ Ship đợt này (giữ form, có thể ship tiếp với cùng mã EMS)
-  const shipBatch=async(clearAfter)=>{
+  // ★ Mã đợt nhập tự sinh: NK + ngày + giờ phút
+  const genImportCode=()=>{const d=new Date();const p=n=>String(n).padStart(2,"0");return "NK"+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+"-"+p(d.getHours())+p(d.getMinutes());};
+
+  // ★ Xác nhận nhập kho (sau khi đã kiểm tra trong cửa sổ)
+  const confirmImport=async()=>{
     if(!allLines.length){msg("⚠️ Chưa có SP nào");return;}
-    if(!emsCode){msg("⚠️ Nhập mã EMS trước khi ship");return;}
-    const confirmMsg=clearAfter
-      ?`📦 CHỐT KIỆN ${emsCode}\n${allLines.length} SKU · ${totalQty} SP\n\nSẽ:\n• Đơn "Chờ hàng" → "Về kho"\n• Ghi ${totalQty} SP vào KHO HÀNG\n• Lưu LỊCH SỬ EMS\n• SL dư → HÀNG DƯ\n• Xoá draft\n\nOK?`
-      :`📦 SHIP ĐỢT NÀY (${emsCode})\n${allLines.length} SKU · ${totalQty} SP\n\nSẽ:\n• Đơn "Chờ hàng" → "Về kho"\n• Ghi ${totalQty} SP vào KHO HÀNG\n• Lưu thêm 1 đợt vào LỊCH SỬ EMS\n• Form GIỮ NGUYÊN mã EMS để ship đợt tiếp\n\nOK?`;
-    if(!confirm(confirmMsg))return;
-    await safePost({action:"shipEMSWithStock",ems:{emsCode,items:allLines}},`✅ Kiện ${emsCode} · ${totalQty} SP vào kho`);
-    // Xoá draft đã ship
-    try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
-      delete drafts[emsCode.toUpperCase()];
-      localStorage.setItem("dt_ems_drafts",JSON.stringify(drafts));
-    }catch(e){}
+    const code=genImportCode();
+    await safePost({action:"shipEMSWithStock",ems:{emsCode:code,items:allLines}},`✅ Đã nhập kho ${totalQty} SP (đợt ${code})`);
+    setShowVerify(false);
     setSel(new Set());setQtyMap({});setManual([]);
-    if(clearAfter)setEmsCode("");
-    else msg(`✅ Đã ship đợt. Mã EMS giữ nguyên — tick SP tiếp để ship đợt sau`);
   };
 
-  // ★ Xoá draft hiện tại
-  const clearDraft=()=>{
-    if(!emsCode)return;
-    if(!confirm(`Xoá draft của mã ${emsCode}?`))return;
-    try{
-      const drafts=JSON.parse(localStorage.getItem("dt_ems_drafts")||"{}");
-      delete drafts[emsCode.toUpperCase()];
-      localStorage.setItem("dt_ems_drafts",JSON.stringify(drafts));
-    }catch(e){}
-    setSel(new Set());setQtyMap({});setManual([]);
-    msg("🗑 Đã xoá draft");
-  };
+  // ★ Dữ liệu cho cửa sổ kiểm tra: so SL nhập vs SL đơn chờ
+  const verifyRows=useMemo(()=>{
+    if(!showVerify)return [];
+    const rows=[];
+    selItems.forEach(g=>{
+      const nhap=Number(qtyMap[g.key]!==undefined?qtyMap[g.key]:g.qty)||0;
+      rows.push({ma:g.ma,size:g.size,color:g.color,cho:g.qty,nhap,diff:nhap-g.qty,manual:false});
+    });
+    manual.filter(m=>m.sku).forEach(m=>{
+      // thử match SKU thủ công với đơn chờ hàng
+      const g=choHang.find(x=>norm(x.ma)===norm(m.sku)&&norm(x.size)===norm(m.size)&&norm(x.color)===norm(m.color));
+      const cho=g&&!sel.has(g.key)?g.qty:0;
+      const nhap=Number(m.qty||1);
+      rows.push({ma:m.sku,size:m.size,color:m.color,cho,nhap,diff:nhap-cho,manual:true});
+    });
+    return rows;
+  },[showVerify,selItems,qtyMap,manual,choHang,sel]);
+  const verifyOK=verifyRows.every(r=>r.diff===0);
+  const totalCho=verifyRows.reduce((s,r)=>s+r.cho,0);
+  const totalNhap=verifyRows.reduce((s,r)=>s+r.nhap,0);
 
   // ★ v3.1: Gộp lịch sử theo mã EMS (sync trực tiếp từ Sheet, không dùng override)
   const groupedHistory=useMemo(()=>{
@@ -2209,29 +2220,21 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
     if(!editingHist||editingHist.rowIndex==null)return;
     const cleanItems=editingHist.items.filter(it=>it.ma||it.sku).map(it=>({ma:it.ma||it.sku||"",size:it.size||"",color:it.color||"",qty:Number(it.qty||0)}));
     if(!cleanItems.length){msg("⚠️ Cần ít nhất 1 SP");return;}
-    if(!editingHist.emsCode){msg("⚠️ Mã EMS không được rỗng");return;}
-    await safePost({action:"editEMSHistory",rowIndex:editingHist.rowIndex,ems:{emsCode:editingHist.emsCode,items:cleanItems}},`✅ Đã cập nhật lịch sử EMS`);
+    if(!editingHist.emsCode){msg("⚠️ Mã đợt không được rỗng");return;}
+    await safePost({action:"editEMSHistory",rowIndex:editingHist.rowIndex,ems:{emsCode:editingHist.emsCode,items:cleanItems}},`✅ Đã cập nhật lịch sử nhập kho`);
     setEditingHist(null);
   };
 
   // ★ v3.1: Xoá 1 đợt EMS trên backend
   const deleteHistBatch=async(rowIndex,emsCode)=>{
     if(rowIndex==null)return;
-    if(!confirm(`🗑 Xoá đợt ship này khỏi LỊCH SỬ EMS?\n(Mã: ${emsCode})\n\nLưu ý: chỉ xoá record lịch sử, KHÔNG hoàn tác trạng thái đơn / kho.`))return;
+    if(!confirm(`🗑 Xoá đợt này khỏi LỊCH SỬ NHẬP KHO?\n(Mã: ${emsCode})\n\nLưu ý: chỉ xoá record lịch sử, KHÔNG hoàn tác trạng thái đơn / kho.`))return;
     await safePost({action:"deleteEMSHistory",rowIndex},`🗑 Đã xoá đợt ${emsCode}`);
   };
 
   return <div>
-    <h2 style={{fontSize:18,fontWeight:800,color:t.tx,marginBottom:4}}>✈️ Kiện EMS</h2>
-    <p style={{color:t.dm,fontSize:11,marginBottom:12}}>Tick SP → chỉnh SL → nhập mã EMS → ship 1 hoặc nhiều đợt · Draft tự lưu trên máy này</p>
-
-    {/* ★ Danh sách draft đang lưu */}
-    {savedDrafts.length>0&&<div style={{background:"#EEF2FF",borderRadius:10,padding:10,marginBottom:12,border:"1px solid #C7D2FE"}}>
-      <div style={{fontSize:11,fontWeight:700,color:"#3730A3",marginBottom:6}}>💾 Draft đang lưu ({savedDrafts.length})</div>
-      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {savedDrafts.map(d=><button key={d.code} onClick={()=>setEmsCode(d.code)} style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${emsCode.toUpperCase()===d.code?"#7C3AED":"#C7D2FE"}`,background:emsCode.toUpperCase()===d.code?"#7C3AED":"#fff",color:emsCode.toUpperCase()===d.code?"#fff":"#3730A3",fontSize:10,cursor:"pointer",fontFamily:"monospace",fontWeight:700}}>{d.code} <span style={{opacity:.7,fontWeight:400}}>({d.count})</span></button>)}
-      </div>
-    </div>}
+    <h2 style={{fontSize:18,fontWeight:800,color:t.tx,marginBottom:4}}>📥 Nhập kho</h2>
+    <p style={{color:t.dm,fontSize:11,marginBottom:12}}>Tick SP hàng về → chỉnh SL → bấm 📥 Nhập kho → kiểm tra khớp SL → xác nhận</p>
 
     {/* Danh sách Chờ hàng */}
     <div style={{background:t.sf,borderRadius:10,border:`1px solid ${t.bd}`,overflow:"hidden",marginBottom:12}}>
@@ -2270,39 +2273,74 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
     </div>}
     <button onClick={()=>setManual(p=>[...p,{sku:"",size:"",color:"",qty:"1"}])} style={{width:"100%",padding:8,borderRadius:8,border:`1px dashed ${t.bd}`,background:"transparent",color:t.dm,fontSize:11,cursor:"pointer",marginBottom:12}}>＋ Thêm SP thủ công</button>
 
-    {/* Tổng kết + EMS code */}
-    {(allLines.length>0||emsCode)&&<div style={{background:"#FFFBEB",borderRadius:12,padding:14,border:"2px solid #F59E0B",marginBottom:12}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,alignItems:"center"}}>
+    {/* Tổng kết + nút Nhập kho */}
+    {allLines.length>0&&<div style={{background:"#FFFBEB",borderRadius:12,padding:14,border:"2px solid #F59E0B",marginBottom:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
         <span style={{fontSize:14,fontWeight:800,color:"#92400E"}}>📦 {allLines.length} SKU · {totalQty} SP</span>
-        {emsCode&&allLines.length>0&&<button onClick={clearDraft} style={{padding:"3px 8px",borderRadius:6,border:"1px solid #DC2626",background:"#fff",color:"#DC2626",fontSize:10,cursor:"pointer",fontWeight:600}}>🗑 Xoá draft</button>}
       </div>
-      <input value={emsCode} onChange={e=>setEmsCode(e.target.value.toUpperCase())} placeholder="MÃ EMS (VD: EJ123456789CN)" style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"2px solid #F59E0B",fontSize:16,fontWeight:800,background:"#fff",color:"#78350F",marginBottom:10,textAlign:"center",letterSpacing:2,fontFamily:"monospace"}}/>
-      {emsCode&&<div style={{fontSize:10,color:"#92400E",marginBottom:8,textAlign:"center",fontStyle:"italic"}}>💾 Draft tự lưu mỗi khi chỉnh sửa</div>}
       <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
-        <button onClick={copyPacking} disabled={!allLines.length} style={{flex:"1 1 80px",padding:10,borderRadius:8,border:"none",background:"#7C3AED",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:!allLines.length?.5:1}}>📋 Copy</button>
-        <button onClick={downloadPDF} disabled={!allLines.length} style={{flex:"1 1 80px",padding:10,borderRadius:8,border:"none",background:"#DC2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:!allLines.length?.5:1}}>📄 PDF</button>
+        <button onClick={copyPacking} style={{flex:"1 1 80px",padding:10,borderRadius:8,border:"none",background:"#7C3AED",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>📋 Copy</button>
+        <button onClick={downloadPDF} style={{flex:"1 1 80px",padding:10,borderRadius:8,border:"none",background:"#DC2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>📄 PDF</button>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        <button onClick={()=>shipBatch(false)} disabled={busy||!allLines.length||!emsCode} style={{flex:"1 1 120px",padding:12,borderRadius:8,border:"none",background:"#0D9488",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:(busy||!allLines.length||!emsCode)?.5:1}} title="Ship đợt này nhưng giữ mã EMS để ship tiếp đợt sau">🚢 Ship đợt này</button>
-        <button onClick={()=>shipBatch(true)} disabled={busy||!allLines.length||!emsCode} style={{flex:"1 1 120px",padding:12,borderRadius:8,border:"none",background:"#D97706",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:(busy||!allLines.length||!emsCode)?.5:1}} title="Ship và đóng kiện (xoá mã EMS)">✅ Chốt kiện</button>
+      <button onClick={()=>setShowVerify(true)} disabled={busy} style={{width:"100%",padding:14,borderRadius:10,border:"none",background:"#16A34A",color:"#fff",fontSize:14,fontWeight:800,cursor:busy?"wait":"pointer",opacity:busy?.6:1}}>📥 Nhập kho ({totalQty} SP)</button>
+    </div>}
+
+    {allLines.length===0&&sel.size===0&&<div style={{background:t.sf,borderRadius:12,padding:20,textAlign:"center",border:`1px solid ${t.bd}`}}>
+      <div style={{fontSize:24,marginBottom:8}}>📥</div>
+      <p style={{color:t.dm,fontSize:12}}>Tick SP hàng về ở trên → bấm Nhập kho</p>
+    </div>}
+
+    {/* ★ CỬA SỔ KIỂM TRA trước khi nhập kho */}
+    {showVerify&&<div onClick={()=>setShowVerify(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:12}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:t.sf,borderRadius:14,padding:16,width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto",border:`1px solid ${t.bd}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <h3 style={{fontSize:15,fontWeight:800,color:t.tx,margin:0}}>🔍 Kiểm tra trước khi nhập kho</h3>
+          <button onClick={()=>setShowVerify(false)} style={{border:"none",background:"none",cursor:"pointer",fontSize:16,color:t.dm}}>✕</button>
+        </div>
+        <table style={{width:"100%",fontSize:11,borderCollapse:"collapse",marginBottom:10}}>
+          <thead><tr style={{color:t.dm,borderBottom:`2px solid ${t.bd}`}}>
+            <th style={{textAlign:"left",padding:"4px 6px"}}>Mã SP</th>
+            <th style={{textAlign:"left",padding:"4px 6px"}}>Size</th>
+            <th style={{textAlign:"left",padding:"4px 6px"}}>Màu</th>
+            <th style={{textAlign:"right",padding:"4px 6px"}}>Đơn chờ</th>
+            <th style={{textAlign:"right",padding:"4px 6px"}}>SL nhập</th>
+            <th style={{textAlign:"center",padding:"4px 6px"}}>Khớp?</th>
+          </tr></thead>
+          <tbody>{verifyRows.map((r,i)=><tr key={i} style={{borderBottom:`1px solid ${t.bd}44`,background:r.diff===0?"transparent":(r.diff>0?"#FFF7ED":"#FEF2F2")}}>
+            <td style={{padding:"4px 6px",fontWeight:700,color:t.ac}}>{r.ma}{r.manual&&<span style={{fontSize:8,marginLeft:3,color:"#92400E"}}>✏️</span>}</td>
+            <td style={{padding:"4px 6px",color:t.tx}}>{r.size}</td>
+            <td style={{padding:"4px 6px",color:t.tx}}>{r.color}</td>
+            <td style={{padding:"4px 6px",textAlign:"right",color:t.dm}}>{r.cho}</td>
+            <td style={{padding:"4px 6px",textAlign:"right",fontWeight:800,color:t.tx}}>{r.nhap}</td>
+            <td style={{padding:"4px 6px",textAlign:"center",fontWeight:700}}>{r.diff===0?<span style={{color:"#16A34A"}}>✓</span>:(r.diff>0?<span style={{color:"#D97706"}}>dư +{r.diff}</span>:<span style={{color:"#DC2626"}}>thiếu {r.diff}</span>)}</td>
+          </tr>)}</tbody>
+          <tfoot><tr style={{borderTop:`2px solid ${t.bd}`,fontWeight:800}}>
+            <td colSpan={3} style={{padding:"6px",color:t.tx}}>TỔNG</td>
+            <td style={{padding:"6px",textAlign:"right",color:t.dm}}>{totalCho}</td>
+            <td style={{padding:"6px",textAlign:"right",color:t.tx}}>{totalNhap}</td>
+            <td style={{padding:"6px",textAlign:"center"}}>{verifyOK?<span style={{color:"#16A34A"}}>✓ Khớp</span>:<span style={{color:"#D97706"}}>⚠️ Lệch</span>}</td>
+          </tr></tfoot>
+        </table>
+        {verifyOK
+          ?<div style={{background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#166534",marginBottom:10}}>✅ Số lượng khớp với đơn chờ hàng. Đơn "Chờ hàng" → "Về kho", hàng ghi vào KHO.</div>
+          :<div style={{background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#92400E",marginBottom:10}}>⚠️ SL nhập {totalNhap>totalCho?"NHIỀU hơn":"ÍT hơn"} đơn chờ ({totalNhap} vs {totalCho}). SL dư sẽ tự vào HÀNG DƯ, SL thiếu thì đơn còn lại vẫn ở "Chờ hàng". Kiểm tra kỹ trước khi xác nhận!</div>}
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setShowVerify(false)} style={{flex:1,padding:12,borderRadius:8,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:12,fontWeight:600,cursor:"pointer"}}>↩ Quay lại sửa</button>
+          <button onClick={confirmImport} disabled={busy} style={{flex:2,padding:12,borderRadius:8,border:"none",background:verifyOK?"#16A34A":"#D97706",color:"#fff",fontSize:13,fontWeight:800,cursor:busy?"wait":"pointer",opacity:busy?.6:1}}>{verifyOK?"✅ Xác nhận nhập kho":"⚠️ Vẫn xác nhận nhập kho"}</button>
+        </div>
       </div>
     </div>}
 
-    {allLines.length===0&&sel.size===0&&!emsCode&&<div style={{background:t.sf,borderRadius:12,padding:20,textAlign:"center",border:`1px solid ${t.bd}`}}>
-      <div style={{fontSize:24,marginBottom:8}}>✈️</div>
-      <p style={{color:t.dm,fontSize:12}}>Tick SP ở trên → tạo packing list</p>
-    </div>}
-
-    {/* ★ LỊCH SỬ EMS — gộp theo mã, có edit */}
+    {/* ★ LỊCH SỬ NHẬP KHO — gộp theo mã đợt, có edit */}
     {groupedHistory.length>0&&<div style={{marginTop:16}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,gap:6,flexWrap:"wrap"}}>
-        <h3 style={{fontSize:14,fontWeight:700,color:t.tx,margin:0}}>📜 Lịch sử EMS ({filteredHistory.length}{searchHist?`/${groupedHistory.length}`:""} mã · {emsHistory.length} đợt)</h3>
+        <h3 style={{fontSize:14,fontWeight:700,color:t.tx,margin:0}}>📜 Lịch sử nhập kho ({filteredHistory.length}{searchHist?`/${groupedHistory.length}`:""} đợt · {emsHistory.length} lần)</h3>
         <div style={{display:"flex",gap:4,alignItems:"center"}}>
-          <input value={searchHist} onChange={e=>setSearchHist(e.target.value)} placeholder="🔍 Mã EMS / mã SP" style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,fontSize:11,background:t.inp,color:t.tx,width:180,maxWidth:"60vw"}}/>
+          <input value={searchHist} onChange={e=>setSearchHist(e.target.value)} placeholder="🔍 Mã đợt / mã SP" style={{padding:"4px 8px",borderRadius:6,border:`1px solid ${t.bd}`,fontSize:11,background:t.inp,color:t.tx,width:180,maxWidth:"60vw"}}/>
           {searchHist&&<button onClick={()=>setSearchHist("")} style={{padding:"3px 6px",borderRadius:4,border:"none",background:"#FEE2E2",color:"#DC2626",fontSize:10,cursor:"pointer",fontWeight:700}}>✕</button>}
         </div>
       </div>
-      {filteredHistory.length===0&&searchHist&&<div style={{padding:16,textAlign:"center",color:t.dm,background:t.sf,borderRadius:8,border:`1px solid ${t.bd}`}}>Không tìm thấy "{searchHist}" trong lịch sử EMS</div>}
+      {filteredHistory.length===0&&searchHist&&<div style={{padding:16,textAlign:"center",color:t.dm,background:t.sf,borderRadius:8,border:`1px solid ${t.bd}`}}>Không tìm thấy "{searchHist}" trong lịch sử nhập kho</div>}
       {filteredHistory.slice(0,30).map((g,gi)=>{
         const multiBatch=g.batches.length>1;
         // ★ v3.2: auto-open details nếu đang search và group này match
@@ -2322,8 +2360,8 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                 {multiBatch&&<div style={{fontSize:10,color:t.dm,marginBottom:4,fontWeight:600}}>📦 Đợt {bi+1} · {b.date} · {b.totalQty} SP</div>}
 
                 {isEditing?<div style={{background:"#FEF3C7",borderRadius:8,padding:8,marginBottom:6,border:"1px solid #F59E0B"}}>
-                  <div style={{fontSize:11,fontWeight:700,color:"#92400E",marginBottom:6}}>✏️ Đang sửa (lưu trực tiếp lên Google Sheet)</div>
-                  <input value={editingHist.emsCode} onChange={e=>setEditingHist({...editingHist,emsCode:e.target.value.toUpperCase()})} placeholder="Mã EMS" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #F59E0B",fontSize:12,fontWeight:700,fontFamily:"monospace",marginBottom:6,background:"#fff"}}/>
+                  <div style={{fontSize:11,fontWeight:700,color:"#92400E",marginBottom:6}}>✏️ Đang sửa (lưu lên server)</div>
+                  <input value={editingHist.emsCode} onChange={e=>setEditingHist({...editingHist,emsCode:e.target.value.toUpperCase()})} placeholder="Mã đợt nhập" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #F59E0B",fontSize:12,fontWeight:700,fontFamily:"monospace",marginBottom:6,background:"#fff"}}/>
                   {editingHist.items.map((it,ii)=><div key={ii} style={{display:"flex",gap:4,marginBottom:3,alignItems:"center"}}>
                     <input value={it.sku} onChange={e=>{const n=[...editingHist.items];n[ii].sku=e.target.value;setEditingHist({...editingHist,items:n});}} placeholder="Mã SP" style={{flex:1,padding:"4px 6px",borderRadius:4,border:"1px solid #F59E0B",fontSize:11,background:"#fff"}}/>
                     <input value={it.size||""} onChange={e=>{const n=[...editingHist.items];n[ii].size=e.target.value;setEditingHist({...editingHist,items:n});}} placeholder="Sz" style={{width:35,padding:"4px",borderRadius:4,border:"1px solid #F59E0B",fontSize:11,background:"#fff",textAlign:"center"}}/>
@@ -2359,22 +2397,22 @@ function EMSTab({active,catalog,emsHistory,safePost,busy,t,msg,bank}){
                 {!isEditing&&<div style={{marginTop:6,display:"flex",gap:4,flexWrap:"wrap"}}>
                   <button onClick={async()=>{
                     const totalQtyH=b.items.reduce((s,it)=>s+Number(it.qty||0),0);
-                    if(!confirm(`🔄 Ship lại đợt này (${g.emsCode})\n${b.items.length} SKU · ${totalQtyH} SP\n\nOK?`))return;
-                    await safePost({action:"shipEMSWithStock",ems:{emsCode:g.emsCode,items:b.items.map(i=>({...i, ma:i.ma||i.sku||""}))}},`✅ Kiện ${g.emsCode} · ${totalQtyH} SP vào kho`);
-                  }} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#F59E0B",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:700}}>🔄 Ship lại</button>
+                    if(!confirm(`🔄 Nhập lại đợt này (${g.emsCode})\n${b.items.length} SKU · ${totalQtyH} SP\n\nOK?`))return;
+                    await safePost({action:"shipEMSWithStock",ems:{emsCode:g.emsCode,items:b.items.map(i=>({...i, ma:i.ma||i.sku||""}))}},`✅ Đợt ${g.emsCode} · ${totalQtyH} SP vào kho`);
+                  }} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#F59E0B",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:700}}>🔄 Nhập lại</button>
                   <button onClick={()=>setEditingHist({rowIndex:b.rowIndex,emsCode:g.emsCode,items:b.items.map(x=>({...x}))})} disabled={!b.rowIndex} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#7C3AED",color:"#fff",fontSize:10,cursor:"pointer",fontWeight:700,opacity:b.rowIndex?1:.5}} title={b.rowIndex?"Sửa items":"Cần redeploy Apps Script v3.1+"}>✏️ Sửa</button>
-                  <button onClick={()=>deleteHistBatch(b.rowIndex,g.emsCode)} disabled={busy||!b.rowIndex} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #DC2626",background:"#fff",color:"#DC2626",fontSize:10,cursor:"pointer",fontWeight:600,opacity:(busy||!b.rowIndex)?.5:1}} title={b.rowIndex?"Xoá đợt khỏi lịch sử":"Cần redeploy Apps Script v3.1+"}>🗑 Xoá đợt</button>
+                  <button onClick={()=>deleteHistBatch(b.rowIndex,g.emsCode)} disabled={busy||!b.rowIndex} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #DC2626",background:"#fff",color:"#DC2626",fontSize:10,cursor:"pointer",fontWeight:600,opacity:(busy||!b.rowIndex)?.5:1}} title="Xoá đợt khỏi lịch sử">🗑 Xoá đợt</button>
                   <button onClick={()=>{
                     const pdfRows=b.items.map((l,i)=>{
                       const img=getImg(l.ma);
                       const imgHtml=img?`<img src="${img}" style="width:50px;height:50px;object-fit:cover;border-radius:4px">`:`-`;
                       return `<tr><td>${i+1}</td><td>${imgHtml}</td><td><b>${l.ma}</b></td><td>${l.size||""}</td><td>${l.color||""}</td><td style="text-align:right"><b>${l.qty}</b></td></tr>`;
                     }).join("");
-                    const pdfHtml=`<html><head><meta charset="utf-8"><title>EMS ${g.emsCode}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;padding:30px;font-size:13px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#7C3AED;color:#fff;padding:8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}.ems{font-family:monospace;font-size:20px;font-weight:bold;padding:10px;border:2px solid #F59E0B;border-radius:8px;text-align:center;margin:12px 0;background:#FFFBEB}img{display:block}@media print{body{padding:15px}}</style></head><body><h1>📦 PACKING LIST</h1><h2>${b.date} · Shop MAM</h2><div class="ems">EMS: ${g.emsCode}</div><table><thead><tr><th>#</th><th>Ảnh</th><th>Mã SP</th><th>Size</th><th>Màu</th><th style="text-align:right">SL</th></tr></thead><tbody>${pdfRows}</tbody></table><div style="font-size:16px;font-weight:bold;margin:12px 0;padding:10px;background:#F3EEFF;border-radius:8px">Tổng: ${b.totalQty} SP · ${b.skuCount} SKU</div></body></html>`;
+                    const pdfHtml=`<html><head><meta charset="utf-8"><title>EMS ${g.emsCode}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:sans-serif;padding:30px;font-size:13px}table{width:100%;border-collapse:collapse;margin:12px 0}th{background:#7C3AED;color:#fff;padding:8px;text-align:left;font-size:11px}td{padding:6px 8px;border-bottom:1px solid #eee;vertical-align:middle}.ems{font-family:monospace;font-size:20px;font-weight:bold;padding:10px;border:2px solid #F59E0B;border-radius:8px;text-align:center;margin:12px 0;background:#FFFBEB}img{display:block}@media print{body{padding:15px}}</style></head><body><h1>📦 PACKING LIST</h1><h2>${b.date} · Shop MAM</h2><div class="ems">ĐỢT: ${g.emsCode}</div><table><thead><tr><th>#</th><th>Ảnh</th><th>Mã SP</th><th>Size</th><th>Màu</th><th style="text-align:right">SL</th></tr></thead><tbody>${pdfRows}</tbody></table><div style="font-size:16px;font-weight:bold;margin:12px 0;padding:10px;background:#F3EEFF;border-radius:8px">Tổng: ${b.totalQty} SP · ${b.skuCount} SKU</div></body></html>`;
                     const w=window.open("","_blank","width=700,height=900");
                     if(w){w.document.write(pdfHtml);w.document.close();setTimeout(()=>w.print(),1000);}
                   }} style={{padding:"4px 10px",borderRadius:6,border:"none",background:"#DC2626",color:"#fff",fontSize:10,cursor:"pointer"}}>📄 In PDF</button>
-                  <button onClick={()=>{const txt=b.items.map(l=>`${l.sku} ${l.size||""} ${l.color||""} x${l.qty}`).join("\n");copyText(`📦 EMS: ${g.emsCode}\n${txt}\nTổng: ${b.totalQty} SP`);msg("📋 Copied");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:10,cursor:"pointer"}}>📋 Copy</button>
+                  <button onClick={()=>{const txt=b.items.map(l=>`${l.sku} ${l.size||""} ${l.color||""} x${l.qty}`).join("\n");copyText(`📦 Đợt: ${g.emsCode}\n${txt}\nTổng: ${b.totalQty} SP`);msg("📋 Copied");}} style={{padding:"4px 10px",borderRadius:6,border:`1px solid ${t.bd}`,background:t.sf,color:t.tx,fontSize:10,cursor:"pointer"}}>📋 Copy</button>
                 </div>}
               </div>;
             })}
@@ -3076,7 +3114,7 @@ function LoginScreen({onLogin,t}){
       const r=await fetch(API,{headers:{"x-api-key":pw}});
       const j=await r.json();
       if(r.status===401||j.error==="Unauthorized"){setErr(true);setTimeout(()=>setErr(false),2000);setChecking(false);return;}
-      API_KEY=pw;localStorage.setItem("dt_api_key",pw);onLogin();
+      API_KEY=pw;localStorage.setItem("dt2_api_key",pw);onLogin();
     }catch(e){setErr(true);setTimeout(()=>setErr(false),2000);}
     setChecking(false);
   };
